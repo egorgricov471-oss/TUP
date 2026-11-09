@@ -18,11 +18,8 @@ const $ = id => document.getElementById(id);
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
+    '&': '&amp;', '<': '&lt;', '>': '&gt;',
+    '"': '&quot;', "'": '&#39;'
   })[char]);
 }
 
@@ -30,95 +27,122 @@ function notify(message) {
   alert(message);
 }
 
-/* АВТОРИЗАЦІЯ */
+/* ВХІД І РЕЄСТРАЦІЯ */
+
+function showLogin() {
+  $('guest-section').hidden = true;
+  $('auth-section').style.display = 'flex';
+}
+
+function closeLogin() {
+  $('auth-section').style.display = 'none';
+  if (!currentUser) $('guest-section').hidden = false;
+}
+
+function openRegister() {
+  const drawer = $('register-drawer');
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('drawer-open');
+}
+
+function closeRegister() {
+  const drawer = $('register-drawer');
+  drawer.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('drawer-open');
+}
 
 async function login(event) {
-  if (event) event.preventDefault();
+  event.preventDefault();
 
-  const email = $('login-email')?.value.trim();
-  const password = $('login-password')?.value;
+  const email = $('email').value.trim();
+  const password = $('password').value;
 
   if (!email || !password) {
-    return notify('Введи електронну пошту та пароль');
+    return notify('Введи електронну пошту та пароль.');
   }
 
-  const { error } = await db.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { error } = await db.auth.signInWithPassword({ email, password });
 
-  if (error) return notify('Не вдалося увійти: ' + error.message);
+  if (error) return notify('Помилка входу: ' + error.message);
 
+  $('auth-section').style.display = 'none';
   await renderUserState();
 }
 
 async function register(event) {
-  if (event) event.preventDefault();
+  event.preventDefault();
 
-  const name = $('register-name')?.value.trim();
-  const email = $('register-email')?.value.trim();
-  const password = $('register-password')?.value;
+  const name = $('reg-name').value.trim();
+  const email = $('reg-email').value.trim();
+  const password = $('reg-password').value;
 
-  if (!name || !email || !password) {
-    return notify('Заповни всі обов’язкові поля');
-  }
-
-  if (password.length < 6) {
-    return notify('Пароль має містити щонайменше 6 символів');
+  if (!name || !email || password.length < 6) {
+    return notify('Заповни всі поля. Пароль має містити щонайменше 6 символів.');
   }
 
   const { data, error } = await db.auth.signUp({
     email,
     password,
-    options: {
-      data: { full_name: name }
-    }
+    options: { data: { full_name: name } }
   });
 
   if (error) return notify('Помилка реєстрації: ' + error.message);
 
   if (data.user) {
-    const { error: profileError } = await db
-      .from('profiles')
-      .upsert({
-        id: data.user.id,
-        full_name: name,
-        status: 'pending'
-      });
+    const { error: profileError } = await db.from('profiles').upsert({
+      id: data.user.id,
+      full_name: name,
+      status: 'pending'
+    });
 
     if (profileError) {
       console.error(profileError);
-      notify('Акаунт створено, але профіль не вдалося записати. Повідом адміністратора.');
-      return;
+      return notify('Акаунт створено, але профіль не записано: ' + profileError.message);
     }
   }
 
-  closeRegisterDrawer();
-  notify('Реєстрацію надіслано. Дочекайся схвалення адміністратора.');
+  $('reg-name').value = '';
+  $('reg-email').value = '';
+  $('reg-password').value = '';
+  closeRegister();
+  notify('Заявку надіслано. Дочекайся схвалення адміністратора.');
   await renderUserState();
 }
 
 async function logout() {
-  await db.auth.signOut();
+  const { error } = await db.auth.signOut();
+  if (error) return notify('Не вдалося вийти: ' + error.message);
+
   currentUser = null;
   currentProfile = null;
   location.reload();
 }
 
+/* СТАН КОРИСТУВАЧА */
+
 async function renderUserState() {
-  const { data: { user } } = await db.auth.getUser();
+  const { data: { user }, error: authError } = await db.auth.getUser();
+
+  if (authError) {
+    console.error(authError);
+    return;
+  }
+
   currentUser = user || null;
 
-  const guest = $('guest-view');
-  const pending = $('pending-view');
-  const main = $('main-view');
-  const adminLink = $('admin-link');
+  const guest = $('guest-section');
+  const pending = $('pending-section');
+  const main = $('main-section');
+  const admin = $('admin-btn');
 
   if (!user) {
-    if (guest) guest.hidden = false;
-    if (pending) pending.hidden = true;
-    if (main) main.hidden = true;
-    if (adminLink) adminLink.hidden = true;
+    guest.hidden = false;
+    pending.style.display = 'none';
+    main.style.display = 'none';
+    admin.style.display = 'none';
+    loadCountdown();
     return;
   }
 
@@ -129,70 +153,40 @@ async function renderUserState() {
     .maybeSingle();
 
   if (error) {
-    console.error('Помилка профілю:', error);
-    notify('Не вдалося завантажити профіль: ' + error.message);
-    return;
+    console.error(error);
+    return notify('Помилка завантаження профілю: ' + error.message);
   }
 
   currentProfile = profile;
 
+  guest.hidden = true;
+  $('auth-section').style.display = 'none';
+
   if (!profile || profile.status === 'pending') {
-    if (guest) guest.hidden = true;
-    if (pending) pending.hidden = false;
-    if (main) main.hidden = true;
-    if (adminLink) adminLink.hidden = true;
-
-    const greeting = $('pending-greeting');
-    if (greeting) {
-      greeting.textContent = profile?.greeting || 'Твоя заявка очікує схвалення адміністратора.';
-    }
+    pending.style.display = 'block';
+    main.style.display = 'none';
+    admin.style.display = 'none';
+    $('pending-greeting').textContent =
+      profile?.greeting || 'Твоя заявка очікує схвалення адміністратора.';
     return;
   }
 
-  if (profile.status !== 'approved' && profile.status !== 'admin') {
-    if (guest) guest.hidden = false;
-    if (pending) pending.hidden = true;
-    if (main) main.hidden = true;
+  if (!['approved', 'admin'].includes(profile.status)) {
+    pending.style.display = 'none';
+    main.style.display = 'none';
+    guest.hidden = false;
     return;
   }
 
-  if (guest) guest.hidden = true;
-  if (pending) pending.hidden = true;
-  if (main) main.hidden = false;
-  if (adminLink) adminLink.hidden = profile.status !== 'admin';
+  pending.style.display = 'none';
+  main.style.display = 'block';
+  admin.style.display = profile.status === 'admin' ? 'inline-flex' : 'none';
 
-  const userName = $('user-name');
-  if (userName) userName.textContent = profile.full_name || user.email || '';
-
-  const greeting = $('user-greeting');
-  if (greeting) greeting.textContent = profile.greeting || '';
+  $('greeting-text').textContent =
+    profile.greeting || `Вітаємо, ${profile.full_name || user.email || ''}`;
 
   showPage('news');
   loadCountdown();
-}
-
-/* ВИСУВНА ПАНЕЛЬ РЕЄСТРАЦІЇ */
-
-function openRegisterDrawer() {
-  $('register-drawer')?.classList.add('open');
-  $('drawer-overlay')?.classList.add('visible');
-  document.body.classList.add('drawer-open');
-}
-
-function closeRegisterDrawer() {
-  $('register-drawer')?.classList.remove('open');
-  $('drawer-overlay')?.classList.remove('visible');
-  document.body.classList.remove('drawer-open');
-}
-
-function openLogin() {
-  const loginBox = $('login-form');
-  if (loginBox) loginBox.hidden = false;
-}
-
-function closeLogin() {
-  const loginBox = $('login-form');
-  if (loginBox) loginBox.hidden = true;
 }
 
 /* НАВІГАЦІЯ */
@@ -211,10 +205,10 @@ function showPage(page) {
   if (page === 'events') loadEvents();
 }
 
-/* НОВИНИ ТА КОМЕНТАРІ */
+/* НОВИНИ */
 
 async function loadNews() {
-  const box = $('news-container') || $('news-list');
+  const box = $('page-news');
   if (!box) return;
 
   box.innerHTML = '<p>Завантаження новин...</p>';
@@ -225,7 +219,7 @@ async function loadNews() {
     .order('created_at', { ascending: false });
 
   if (error) {
-    box.textContent = 'Не вдалося завантажити новини: ' + error.message;
+    box.textContent = 'Помилка завантаження новин: ' + error.message;
     return;
   }
 
@@ -241,8 +235,8 @@ async function loadNews() {
       <div class="news-content">${escapeHTML(item.content).replace(/\n/g, '<br>')}</div>
       <section class="comments-section">
         <h4>Коментарі</h4>
-        <div id="comments-${item.id}">Завантаження коментарів...</div>
-        <form onsubmit="addComment(event, '${item.id}')">
+        <div id="comments-${escapeHTML(item.id)}">Завантаження...</div>
+        <form onsubmit="addComment(event, '${escapeHTML(item.id)}')">
           <textarea name="comment" placeholder="Написати коментар..." required></textarea>
           <button type="submit">Надіслати</button>
         </form>
@@ -250,9 +244,7 @@ async function loadNews() {
     </article>
   `).join('');
 
-  for (const item of data) {
-    loadComments(item.id);
-  }
+  for (const item of data) await loadComments(item.id);
 }
 
 async function loadComments(newsId) {
@@ -271,18 +263,15 @@ async function loadComments(newsId) {
     return;
   }
 
-  if (!data?.length) {
-    box.innerHTML = '<p class="empty-comments">Коментарів поки немає.</p>';
-    return;
-  }
-
-  box.innerHTML = data.map(comment => `
-    <div class="comment">
-      <strong>${escapeHTML(comment.author_name || 'Учасник')}</strong>
-      <p>${escapeHTML(comment.content || comment.comment || '')}</p>
-      <time>${formatDate(comment.created_at)}</time>
-    </div>
-  `).join('');
+  box.innerHTML = !data?.length
+    ? '<p>Коментарів поки немає.</p>'
+    : data.map(comment => `
+      <div class="comment">
+        <strong>${escapeHTML(comment.author_name || 'Учасник')}</strong>
+        <p>${escapeHTML(comment.content || comment.comment || '')}</p>
+        <time>${formatDate(comment.created_at)}</time>
+      </div>
+    `).join('');
 }
 
 async function addComment(event, newsId) {
@@ -303,15 +292,13 @@ async function addComment(event, newsId) {
     content
   }]);
 
-  if (error) {
-    return notify('Не вдалося додати коментар: ' + error.message);
-  }
+  if (error) return notify('Помилка коментаря: ' + error.message);
 
   form.reset();
-  loadComments(newsId);
+  await loadComments(newsId);
 }
 
-/* СПИСОК ІМЕНИН / ДНІВ СМЕРТІ */
+/* ІМЕНИНИ ТА ДНІ СМЕРТІ */
 
 function nextAnnualDate(item) {
   const now = new Date();
@@ -321,28 +308,19 @@ function nextAnnualDate(item) {
   if (next < today) {
     next = new Date(now.getFullYear() + 1, Number(item.date_month) - 1, Number(item.date_day));
   }
-
   return next;
 }
 
-function dateLabel(item) {
-  return item.date_type === 'death' || item.is_death
-    ? 'День смерті'
-    : 'Іменини / день народження';
-}
-
 async function loadDates() {
-  const box = $('dates-container') || $('dates-list');
+  const box = $('page-dates');
   if (!box) return;
 
   box.innerHTML = '<p>Завантаження дат...</p>';
 
-  const { data, error } = await db
-    .from('dates')
-    .select('*');
+  const { data, error } = await db.from('dates').select('*');
 
   if (error) {
-    box.textContent = 'Не вдалося завантажити дати: ' + error.message;
+    box.textContent = 'Помилка завантаження дат: ' + error.message;
     return;
   }
 
@@ -355,25 +333,26 @@ async function loadDates() {
     return;
   }
 
-  const visibleDates = showingAllDates ? dates : dates.slice(0, 10);
+  const visible = showingAllDates ? dates : dates.slice(0, 10);
 
-  box.innerHTML = visibleDates.map(item => {
-    const next = nextAnnualDate(item);
-    const fullDate = [
+  box.innerHTML = visible.map(item => {
+    const date = [
       String(item.date_day).padStart(2, '0'),
       String(item.date_month).padStart(2, '0'),
       item.date_year || ''
     ].filter(Boolean).join('.');
 
+    const isDeath = item.date_type === 'death' || item.is_death;
+
     return `
       <article class="date-card">
         <div class="date-card-top">
-          <span class="date-type">${escapeHTML(dateLabel(item))}</span>
-          <time>${escapeHTML(fullDate)}</time>
+          <span class="date-type">${isDeath ? 'День смерті' : 'Іменини / день народження'}</span>
+          <time>${escapeHTML(date)}</time>
         </div>
         <h3>${escapeHTML(item.person_name)}</h3>
         ${item.description ? `<p>${escapeHTML(item.description)}</p>` : ''}
-        <small>Найближча дата: ${next.toLocaleDateString('uk-UA')}</small>
+        <small>Найближча дата: ${nextAnnualDate(item).toLocaleDateString('uk-UA')}</small>
       </article>
     `;
   }).join('');
@@ -395,7 +374,7 @@ function toggleAllDates() {
 /* ПОДІЇ */
 
 async function loadEvents() {
-  const box = $('events-container') || $('events-list');
+  const box = $('page-events');
   if (!box) return;
 
   box.innerHTML = '<p>Завантаження подій...</p>';
@@ -407,7 +386,7 @@ async function loadEvents() {
     .order('event_date', { ascending: true });
 
   if (error) {
-    box.textContent = 'Не вдалося завантажити події: ' + error.message;
+    box.textContent = 'Помилка завантаження подій: ' + error.message;
     return;
   }
 
@@ -416,32 +395,29 @@ async function loadEvents() {
     return;
   }
 
-  const labels = {
-    holiday: 'Свято',
-    grief: 'Горе',
-    other: 'Інше'
-  };
+  const labels = { holiday: 'Свято', grief: 'Горе', other: 'Інше' };
 
   box.innerHTML = data.map(item => `
     <article class="event-card">
       <span class="event-type event-${escapeHTML(item.event_type || 'other')}">
-        ${escapeHTML(labels[item.event_type] || 'Інше')}
+        ${labels[item.event_type] || 'Інше'}
       </span>
       <h3>${escapeHTML(item.title)}</h3>
       <time>${new Date(item.event_date).toLocaleString('uk-UA', {
-        dateStyle: 'long',
-        timeStyle: 'short'
+        dateStyle: 'long', timeStyle: 'short'
       })}</time>
       ${item.description ? `<p>${escapeHTML(item.description)}</p>` : ''}
     </article>
   `).join('');
 }
 
-/* ЗВОРОТНИЙ ВІДЛІК ДО НАЙБЛИЖЧОЇ ПОДІЇ */
+/* ЛІЧИЛЬНИКИ: ГОСТЬОВИЙ І ПІСЛЯ ВХОДУ */
 
 async function loadCountdown() {
-  const box = $('countdown');
-  if (!box) return;
+  const guestBox = $('guest-countdown');
+  const memberBox = $('member-countdown');
+  const guestTitle = $('guest-event-title');
+  const memberTitle = $('member-event-title');
 
   const { data, error } = await db
     .from('events')
@@ -452,12 +428,14 @@ async function loadCountdown() {
 
   if (error) {
     console.error('Помилка відліку:', error);
-    box.textContent = 'Не вдалося завантажити найближчу подію.';
+    if (guestBox) guestBox.textContent = 'Не вдалося завантажити подію.';
+    if (memberBox) memberBox.textContent = 'Не вдалося завантажити подію.';
     return;
   }
 
   if (!data?.length) {
-    box.innerHTML = '<p>Найближчих подій поки немає.</p>';
+    if (guestBox) guestBox.textContent = 'Найближчих подій поки немає.';
+    if (memberBox) memberBox.textContent = 'Найближчих подій поки немає.';
     if (countdownTimer) clearInterval(countdownTimer);
     return;
   }
@@ -469,34 +447,36 @@ async function loadCountdown() {
     const distance = target - Date.now();
 
     if (distance <= 0) {
-      box.innerHTML = `<p>Подія «${escapeHTML(event.title)}» уже почалася.</p>`;
+      if (guestBox) guestBox.textContent = 'Подія вже почалася.';
+      if (memberBox) memberBox.textContent = 'Подія вже почалася.';
       clearInterval(countdownTimer);
       loadCountdown();
       return;
     }
 
     const days = Math.floor(distance / 86400000);
-    const hours = Math.floor((distance % 86400000) / 3600000);
-    const minutes = Math.floor((distance % 3600000) / 60000);
-    const seconds = Math.floor((distance % 60000) / 1000);
+    const hours = Math.floor(distance % 86400000 / 3600000);
+    const minutes = Math.floor(distance % 3600000 / 60000);
+    const seconds = Math.floor(distance % 60000 / 1000);
 
-    box.innerHTML = `
-      <p class="countdown-title">До події: ${escapeHTML(event.title)}</p>
+    const html = `
       <div class="countdown-values">
         <div><strong>${days}</strong><span>днів</span></div>
         <div><strong>${String(hours).padStart(2, '0')}</strong><span>годин</span></div>
         <div><strong>${String(minutes).padStart(2, '0')}</strong><span>хвилин</span></div>
         <div><strong>${String(seconds).padStart(2, '0')}</strong><span>секунд</span></div>
-      </div>
-    `;
+      </div>`;
+
+    if (guestBox) guestBox.innerHTML = html;
+    if (memberBox) memberBox.innerHTML = html;
+    if (guestTitle) guestTitle.textContent = event.title;
+    if (memberTitle) memberTitle.textContent = event.title;
   }
 
   if (countdownTimer) clearInterval(countdownTimer);
   update();
   countdownTimer = setInterval(update, 1000);
 }
-
-/* ДОПОМІЖНЕ */
 
 function formatDate(value) {
   if (!value) return '';
@@ -506,16 +486,14 @@ function formatDate(value) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  $('register-open')?.addEventListener('click', openRegisterDrawer);
-  $('register-close')?.addEventListener('click', closeRegisterDrawer);
-  $('drawer-overlay')?.addEventListener('click', closeRegisterDrawer);
-  $('login-open')?.addEventListener('click', openLogin);
-  $('login-close')?.addEventListener('click', closeLogin);
+/* ЗАПУСК */
 
-  document.querySelectorAll('[data-page]').forEach(button => {
-    button.addEventListener('click', () => showPage(button.dataset.page));
+document.addEventListener('DOMContentLoaded', async () => {
+  const drawer = $('register-drawer');
+
+  drawer?.addEventListener('click', event => {
+    if (event.target === drawer) closeRegister();
   });
 
-  renderUserState();
+  await renderUserState();
 });
