@@ -6,7 +6,14 @@ let currentUser = null;
 
 async function checkUser() {
     try {
+        // Спочатку ховаємо всі екрани, щоб не було мигання
+        ['auth-section', 'pending-section', 'guest-section', 'main-section'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
         const { data: { user } } = await db.auth.getUser();
+        
         if (user) {
             currentUser = user;
             const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
@@ -24,13 +31,19 @@ async function checkUser() {
                     }
                     showPage('news');
                 }
+            } else {
+                // Якщо профілю немає (наприклад, щойно зареєструвався)
+                showSection('pending');
             }
         } else {
+            // Якщо не залогінений
             showSection('guest');
             loadGuestNews();
         }
     } catch (e) {
-        console.error("Помилка при перевірці користувача:", e);
+        console.error("Помилка в checkUser:", e);
+        // Якщо сталася помилка, показуємо форму входу
+        showSection('auth-section');
     }
 }
 
@@ -38,7 +51,7 @@ function showSection(id) {
     const sections = ['auth-section', 'pending-section', 'guest-section', 'main-section'];
     sections.forEach(sec => {
         const el = document.getElementById(sec);
-        if (el) el.style.display = 'none'; // Перевіряємо, чи існує елемент
+        if (el) el.style.display = 'none';
     });
     const activeEl = document.getElementById(id);
     if (activeEl) activeEl.style.display = 'block';
@@ -72,11 +85,10 @@ function showLogin() { showSection('auth-section'); }
 
 async function loadGuestNews() {
     try {
-        const { data, error } = await db.from('news').select('*').eq('is_pinned', true).limit(1);
+        const { data } = await db.from('news').select('*').eq('is_pinned', true).limit(1);
         const titleEl = document.getElementById('guest-news-title');
         const contentEl = document.getElementById('guest-news-content');
         
-        // Якщо є дані і масив не порожній
         if (data && data.length > 0) {
             if (titleEl) titleEl.innerText = data[0].title;
             if (contentEl) contentEl.innerText = data[0].content;
@@ -84,12 +96,12 @@ async function loadGuestNews() {
             if (titleEl) titleEl.innerText = "Ласкаво просимо!";
             if (contentEl) contentEl.innerText = "Щоб побачити більше, потрібно увійти в систему.";
         }
-    } catch (e) { console.log("Помилка завантаження новин:", e); }
+    } catch (e) { console.log("Немає новин для гостей"); }
 }
 
 async function showPage(page) {
     const area = document.getElementById('content-area');
-    if (!area) return; // Якщо ми не на головній сторінці, нічого не робимо
+    if (!area) return;
 
     if (page === 'news') {
         area.innerHTML = '<h2>Новини</h2><p>Завантаження...</p>';
@@ -122,4 +134,5 @@ async function showPage(page) {
     }
 }
 
+// Запускаємо перевірку
 checkUser();
