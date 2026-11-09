@@ -1,14 +1,16 @@
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ЗМІНИЛИ НА db, щоб не було конфлікту з бібліотекою
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
 
 async function checkAdmin() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (!user) { window.location.href = 'index.html'; return; }
     
-    const { data: profile } = await supabase.from('profiles').select('status').eq('id', user.id).single();
+    const { data: profile } = await db.from('profiles').select('status').eq('id', user.id).single();
     if (profile.status !== 'admin') {
         alert("Доступ заборонено. Ви не адмін.");
         window.location.href = 'index.html';
@@ -33,8 +35,8 @@ function switchTab(tab) {
 }
 
 async function loadUsers() {
-    const { data: pending } = await supabase.from('profiles').select('*').eq('status', 'pending');
-    const { data: approved } = await supabase.from('profiles').select('*').eq('status', 'approved');
+    const { data: pending } = await db.from('profiles').select('*').eq('status', 'pending');
+    const { data: approved } = await db.from('profiles').select('*').eq('status', 'approved');
 
     const pList = document.getElementById('pending-users-list');
     pList.innerHTML = pending.length ? '' : '<p>Немає нових заявок.</p>';
@@ -67,25 +69,25 @@ async function loadUsers() {
 
 async function approveUser(id) {
     const greet = document.getElementById(`greet-${id}`).value;
-    await supabase.from('profiles').update({ status: 'approved', greeting: greet }).eq('id', id);
+    await db.from('profiles').update({ status: 'approved', greeting: greet }).eq('id', id);
     loadUsers();
 }
 
 async function updateGreeting(id) {
     const greet = document.getElementById(`edit-greet-${id}`).value;
-    await supabase.from('profiles').update({ greeting: greet }).eq('id', id);
+    await db.from('profiles').update({ greeting: greet }).eq('id', id);
     loadUsers();
 }
 
 async function deleteUser(id) {
     if(confirm("Видалити цього користувача назавжди?")) {
-        await supabase.from('profiles').delete().eq('id', id);
+        await db.from('profiles').delete().eq('id', id);
         loadUsers();
     }
 }
 
 async function loadNews() {
-    const { data } = await supabase.from('news').select('*').order('created_at', { ascending: false });
+    const { data } = await db.from('news').select('*').order('created_at', { ascending: false });
     const list = document.getElementById('news-list');
     list.innerHTML = '';
     data.forEach(n => {
@@ -102,8 +104,8 @@ async function addNews() {
     const content = document.getElementById('news-content').value;
     const is_pinned = document.getElementById('news-pinned').checked;
     if(!title || !content) return alert("Заповніть всі поля!");
-    if (is_pinned) await supabase.from('news').update({ is_pinned: false }).neq('id', 0);
-    await supabase.from('news').insert([{ title, content, is_pinned }]);
+    if (is_pinned) await db.from('news').update({ is_pinned: false }).neq('id', 0);
+    await db.from('news').insert([{ title, content, is_pinned }]);
     document.getElementById('news-title').value = '';
     document.getElementById('news-content').value = '';
     document.getElementById('news-pinned').checked = false;
@@ -112,13 +114,13 @@ async function addNews() {
 
 async function deleteNews(id) {
     if(confirm("Видалити новину?")) {
-        await supabase.from('news').delete().eq('id', id);
+        await db.from('news').delete().eq('id', id);
         loadNews();
     }
 }
 
 async function loadDates() {
-    const { data } = await supabase.from('dates').select('*').order('date_month', { ascending: true }).order('date_day', { ascending: true });
+    const { data } = await db.from('dates').select('*').order('date_month', { ascending: true }).order('date_day', { ascending: true });
     const list = document.getElementById('dates-list');
     list.innerHTML = '';
     data.forEach(d => {
@@ -139,7 +141,7 @@ async function addDate() {
     const year = parseInt(document.getElementById('date-year').value) || null;
     const is_death = document.getElementById('date-death').checked;
     if(!name || !day || !month) return alert("Заповніть ім'я, день та місяць!");
-    await supabase.from('dates').insert([{ person_name: name, date_day: day, date_month: month, date_year: year, is_death }]);
+    await db.from('dates').insert([{ person_name: name, date_day: day, date_month: month, date_year: year, is_death }]);
     document.getElementById('date-name').value = '';
     document.getElementById('date-day').value = '';
     document.getElementById('date-month').value = '';
@@ -150,13 +152,13 @@ async function addDate() {
 
 async function deleteDate(id) {
     if(confirm("Видалити цю дату?")) {
-        await supabase.from('dates').delete().eq('id', id);
+        await db.from('dates').delete().eq('id', id);
         loadDates();
     }
 }
 
 async function loadEvents() {
-    const { data } = await supabase.from('events').select('*').order('event_date', { ascending: true });
+    const { data } = await db.from('events').select('*').order('event_date', { ascending: true });
     const list = document.getElementById('events-list');
     list.innerHTML = '';
     data.forEach(e => {
@@ -174,7 +176,7 @@ async function addEvent() {
     const date = document.getElementById('event-date').value;
     const desc = document.getElementById('event-desc').value;
     if(!title || !date) return alert("Заповніть назву та дату!");
-    await supabase.from('events').insert([{ title, event_date: new Date(date).toISOString(), description: desc }]);
+    await db.from('events').insert([{ title, event_date: new Date(date).toISOString(), description: desc }]);
     document.getElementById('event-title').value = '';
     document.getElementById('event-date').value = '';
     document.getElementById('event-desc').value = '';
@@ -183,7 +185,7 @@ async function addEvent() {
 
 async function deleteEvent(id) {
     if(confirm("Видалити подію?")) {
-        await supabase.from('events').delete().eq('id', id);
+        await db.from('events').delete().eq('id', id);
         loadEvents();
     }
 }
