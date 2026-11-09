@@ -689,3 +689,103 @@ footer {
     grid-column: auto;
   }
 }
+/* === FIX: ФОТО ТА АКТУАЛЬНІ ЕЛЕМЕНТИ INDEX.HTML === */
+
+.hero-photo {
+  background-image:
+    linear-gradient(to top, rgba(10, 12, 9, .78), rgba(10, 12, 9, .12)),
+    url("./group-photo-blurred.jpg");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.member-logo {
+  background-image: url("./group-logo.jpg");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* Гостьова сторінка */
+#guest-section {
+  display: block;
+}
+
+#guest-section[hidden],
+#auth-section[hidden],
+#pending-section[hidden],
+#main-section[hidden] {
+  display: none !important;
+}
+
+/* Основна сторінка */
+#main-section {
+  padding-top: 24px;
+}
+
+#content-area {
+  width: min(calc(100% - 32px), 1080px);
+  margin: 0 auto;
+}
+
+#page-news,
+#page-dates,
+#page-events {
+  animation: appear .25s ease;
+}
+
+/* Лічильники */
+#guest-countdown,
+#member-countdown {
+  padding: 20px;
+  margin: 20px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Реєстрація */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, .7);
+  opacity: 0;
+  visibility: hidden;
+  transition: .25s ease;
+}
+
+.drawer-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.register-drawer {
+  width: min(100%, 520px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px 22px 35px;
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  transform: translateY(100%);
+  transition: transform .3s ease;
+}
+
+.drawer-backdrop.open .register-drawer {
+  transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+  .hero-photo {
+    background-position: center;
+  }
+
+  .member-logo {
+    width: 100%;
+    max-width: 220px;
+  }
+}
