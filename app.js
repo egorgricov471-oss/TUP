@@ -1,14 +1,15 @@
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ЗМІНИЛИ НАЗВУ НА db, щоб не було конфлікту
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 
 async function checkUser() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (user) {
         currentUser = user;
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
         
         if (profile) {
             if (profile.status === 'pending') {
@@ -37,7 +38,7 @@ function showSection(id) {
 async function login() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await db.auth.signInWithPassword({ email, password });
     if (error) document.getElementById('auth-message').innerText = error.message;
     else window.location.reload();
 }
@@ -45,7 +46,7 @@ async function login() {
 async function register() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await db.auth.signUp({ email, password });
     if (error) document.getElementById('auth-message').innerText = error.message;
     else {
         document.getElementById('auth-message').style.color = 'green';
@@ -54,14 +55,14 @@ async function register() {
 }
 
 async function logout() {
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     window.location.reload();
 }
 
 function showLogin() { showSection('auth-section'); }
 
 async function loadGuestNews() {
-    const { data } = await supabase.from('news').select('*').eq('is_pinned', true).single();
+    const { data } = await db.from('news').select('*').eq('is_pinned', true).single();
     if (data) {
         document.getElementById('guest-news-title').innerText = data.title;
         document.getElementById('guest-news-content').innerText = data.content;
@@ -75,14 +76,14 @@ async function showPage(page) {
     const area = document.getElementById('content-area');
     if (page === 'news') {
         area.innerHTML = '<h2>Новини</h2><p>Завантаження...</p>';
-        const { data } = await supabase.from('news').select('*').order('created_at', { ascending: false });
+        const { data } = await db.from('news').select('*').order('created_at', { ascending: false });
         let html = '<h2>Новини</h2>';
         if (!data || data.length === 0) html += '<p>Новин поки немає.</p>';
         else data.forEach(n => html += `<div class="card"><h3>${n.title}</h3><p>${n.content}</p></div>`);
         area.innerHTML = html;
     } else if (page === 'dates') {
         area.innerHTML = '<h2>Пам\'ятні дати</h2><p>Завантаження...</p>';
-        const { data } = await supabase.from('dates').select('*').order('date_month', { ascending: true }).order('date_day', { ascending: true });
+        const { data } = await db.from('dates').select('*').order('date_month', { ascending: true }).order('date_day', { ascending: true });
         let html = '<h2>Пам\'ятні дати</h2>';
         if (!data || data.length === 0) html += '<p>Дат поки немає.</p>';
         else data.forEach(d => {
@@ -93,7 +94,7 @@ async function showPage(page) {
         area.innerHTML = html;
     } else if (page === 'events') {
         area.innerHTML = '<h2>Події</h2><p>Завантаження...</p>';
-        const { data } = await supabase.from('events').select('*').order('event_date', { ascending: true });
+        const { data } = await db.from('events').select('*').order('event_date', { ascending: true });
         let html = '<h2>Події</h2>';
         if (!data || data.length === 0) html += '<p>Подій поки немає.</p>';
         else data.forEach(e => {
