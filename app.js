@@ -53,39 +53,39 @@ window.onload = function() {
     }
 
     async function checkUser() {
-        try {
-            const { data: { user } } = await db.auth.getUser();
+    try {
+        const { data: { user } } = await db.auth.getUser();
+        
+        if (user) {
+            currentUser = user;
+            const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
             
-            if (user) {
-                currentUser = user;
-                const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
-                
-                if (profile) {
-                    if (profile.status === 'pending') {
-                        showSection('pending');
-                    } else if (profile.status === 'approved' || profile.status === 'admin') {
-                        showSection('main');
-                        const greetingElem = document.getElementById('greeting-text');
-                        if (greetingElem && profile.greeting) greetingElem.innerText = profile.greeting;
-                        if (profile.status === 'admin') {
-                            const adminBtn = document.getElementById('admin-btn');
-                            if (adminBtn) adminBtn.style.display = 'inline-block';
-                        }
-                        showPage('news');
-                    }
-                } else {
+            if (profile) {
+                if (profile.status === 'pending') {
                     showSection('pending');
+                } else if (profile.status === 'approved' || profile.status === 'admin') {
+                    showSection('main');
+                    const greetingElem = document.getElementById('greeting-text');
+                    if (greetingElem && profile.greeting) greetingElem.innerText = profile.greeting;
+                    if (profile.status === 'admin') {
+                        const adminBtn = document.getElementById('admin-btn');
+                        if (adminBtn) adminBtn.style.display = 'inline-block';
+                    }
+                    showPage('news');
                 }
             } else {
-                // Якщо не залогінений — показуємо гостя
-                showSection('guest');
-                loadGuestNews();
+                showSection('pending');
             }
-        } catch (e) {
-            console.error("Помилка в checkUser:", e);
-            showSection('auth-section'); // Якщо помилка — показуємо форму входу
+        } else {
+            // Якщо не залогінений — показуємо гостя
+            showSection('guest');
+            loadGuestNews();
         }
+    } catch (e) {
+        console.error("Помилка в checkUser:", e);
+        // Якщо помилка — НЕ ховаємо форму входу, вона вже видима
     }
+}
 
     async function loadGuestNews() {
         try {
