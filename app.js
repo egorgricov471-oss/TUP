@@ -1,17 +1,12 @@
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
 
+// Використовуємо db, щоб не було конфлікту з бібліотекою supabase
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 
 async function checkUser() {
     try {
-        // Спочатку ховаємо всі екрани, щоб не було мигання
-        ['auth-section', 'pending-section', 'guest-section', 'main-section'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-
         const { data: { user } } = await db.auth.getUser();
         
         if (user) {
@@ -32,17 +27,14 @@ async function checkUser() {
                     showPage('news');
                 }
             } else {
-                // Якщо профілю немає (наприклад, щойно зареєструвався)
                 showSection('pending');
             }
         } else {
-            // Якщо не залогінений
             showSection('guest');
             loadGuestNews();
         }
     } catch (e) {
         console.error("Помилка в checkUser:", e);
-        // Якщо сталася помилка, показуємо форму входу
         showSection('auth-section');
     }
 }
@@ -134,5 +126,4 @@ async function showPage(page) {
     }
 }
 
-// Запускаємо перевірку
 checkUser();
