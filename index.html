@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container" id="auth-section">
+    <div class="container" id="auth-section" style="display: block;">
         <h1>Вхід</h1>
         <div class="card">
             <input type="email" id="email" placeholder="Email" required>
@@ -41,7 +41,6 @@
     <!-- Головний екран для схвалених друзів та адміна -->
     <div class="container" id="main-section" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <!-- ОСЬ ТУТ МИ ДОДАЛИ ID, ЩОБ ПРИВІТАННЯ ЗМІНЮВАЛОСЯ -->
             <h1 id="greeting-text">Привіт! 👋</h1>
             <div>
                 <button onclick="showPage('news')">Новини</button>
@@ -57,7 +56,6 @@
         </div>
     </div>
 
-    <!-- Підключення скрипту Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
 </body>
