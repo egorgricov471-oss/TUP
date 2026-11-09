@@ -1,9 +1,7 @@
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
 
-// ЗМІНИЛИ НА db, щоб не було конфлікту з бібліотекою
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 let currentUser = null;
 
 async function checkAdmin() {
