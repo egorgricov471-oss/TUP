@@ -1,38 +1,47 @@
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
 
-// ЗМІНИЛИ НАЗВУ НА db, щоб не було конфлікту
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 
 async function checkUser() {
-    const { data: { user } } = await db.auth.getUser();
-    if (user) {
-        currentUser = user;
-        const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
-        
-        if (profile) {
-            if (profile.status === 'pending') {
-                showSection('pending');
-            } else if (profile.status === 'approved' || profile.status === 'admin') {
-                showSection('main');
-                const greetingElem = document.getElementById('greeting-text');
-                if (profile.greeting) greetingElem.innerText = profile.greeting;
-                if (profile.status === 'admin') document.getElementById('admin-btn').style.display = 'inline-block';
-                showPage('news');
+    try {
+        const { data: { user } } = await db.auth.getUser();
+        if (user) {
+            currentUser = user;
+            const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
+            
+            if (profile) {
+                if (profile.status === 'pending') {
+                    showSection('pending');
+                } else if (profile.status === 'approved' || profile.status === 'admin') {
+                    showSection('main');
+                    const greetingElem = document.getElementById('greeting-text');
+                    if (greetingElem && profile.greeting) greetingElem.innerText = profile.greeting;
+                    if (profile.status === 'admin') {
+                        const adminBtn = document.getElementById('admin-btn');
+                        if (adminBtn) adminBtn.style.display = 'inline-block';
+                    }
+                    showPage('news');
+                }
             }
+        } else {
+            showSection('guest');
+            loadGuestNews();
         }
-    } else {
-        showSection('guest');
-        loadGuestNews();
+    } catch (e) {
+        console.error("Помилка при перевірці користувача:", e);
     }
 }
 
 function showSection(id) {
-    ['auth-section', 'pending-section', 'guest-section', 'main-section'].forEach(sec => {
-        document.getElementById(sec).style.display = 'none';
+    const sections = ['auth-section', 'pending-section', 'guest-section', 'main-section'];
+    sections.forEach(sec => {
+        const el = document.getElementById(sec);
+        if (el) el.style.display = 'none'; // Перевіряємо, чи існує елемент
     });
-    document.getElementById(id).style.display = 'block';
+    const activeEl = document.getElementById(id);
+    if (activeEl) activeEl.style.display = 'block';
 }
 
 async function login() {
@@ -62,18 +71,25 @@ async function logout() {
 function showLogin() { showSection('auth-section'); }
 
 async function loadGuestNews() {
-    const { data } = await db.from('news').select('*').eq('is_pinned', true).single();
-    if (data) {
-        document.getElementById('guest-news-title').innerText = data.title;
-        document.getElementById('guest-news-content').innerText = data.content;
-    } else {
-        document.getElementById('guest-news-title').innerText = "Ласкаво просимо!";
-        document.getElementById('guest-news-content').innerText = "Щоб побачити більше, потрібно увійти в систему.";
-    }
+    try {
+        const { data } = await db.from('news').select('*').eq('is_pinned', true).single();
+        const titleEl = document.getElementById('guest-news-title');
+        const contentEl = document.getElementById('guest-news-content');
+        
+        if (data) {
+            if (titleEl) titleEl.innerText = data.title;
+            if (contentEl) contentEl.innerText = data.content;
+        } else {
+            if (titleEl) titleEl.innerText = "Ласкаво просимо!";
+            if (contentEl) contentEl.innerText = "Щоб побачити більше, потрібно увійти в систему.";
+        }
+    } catch (e) { console.log("Немає новин для гостей"); }
 }
 
 async function showPage(page) {
     const area = document.getElementById('content-area');
+    if (!area) return; // Якщо ми не на головній сторінці, нічого не робимо
+
     if (page === 'news') {
         area.innerHTML = '<h2>Новини</h2><p>Завантаження...</p>';
         const { data } = await db.from('news').select('*').order('created_at', { ascending: false });
