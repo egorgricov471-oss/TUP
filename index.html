@@ -1,34 +1,168 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#11120f"><meta name="description" content="Товариство Українських Поступовців">
-  <title>ТУП — Товариство Українських Поступовців</title><link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#11120f">
+  <meta name="description" content="Товариство Українських Поступовців">
+  <title>ТУП — Товариство Українських Поступовців</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
-  <header class="topbar"><a class="brand" href="index.html"><span class="brand-mark">Т</span><span>ТУП<small>Товариство Українських Поступовців</small></span></a><div class="top-actions"><button class="ghost-btn" id="login-open" onclick="showLogin()">Увійти</button><button class="solid-btn" id="header-register" onclick="openRegister()">Приєднатися</button></div></header>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">Т</span>
+      <span>ТУП<small>Товариство Українських Поступовців</small></span>
+    </a>
+    <div class="top-actions">
+      <button class="ghost-btn" id="login-open" onclick="showLogin()">Увійти</button>
+      <button class="solid-btn" id="header-register" onclick="openRegister()">Реєстрація</button>
+    </div>
+  </header>
 
   <main>
+    <!-- Гостьова сторінка -->
     <section id="guest-section" class="guest-shell">
-      <div class="hero-photo-wrap"><div class="hero-photo" role="img" aria-label="Фото спільноти ТУП"></div><div class="photo-overlay"></div><div class="hero-tag">Згуртовані ідеєю. Сильні спільнотою.</div></div>
-      <div class="hero-copy"><p class="eyebrow">ТОВАРИСТВО УКРАЇНСЬКИХ ПОСТУПОВЦІВ</p><h1>Місце, де <em>свої</em> знаходять своїх.</h1><p class="hero-lead">Спільнота, пам’ять, події та люди, які творять щось разом.</p><button class="hero-cta" onclick="openRegister()">Стати частиною ТУП <span>↗</span></button><p class="hero-note">Реєстрація відкрита. Доступ до спільноти — після схвалення адміністратора.</p></div>
-      <div class="guest-bottom"><div class="countdown-panel"><div class="countdown-label"><span class="live-dot"></span> НАЙБЛИЖЧА ПОДІЯ</div><div id="guest-countdown" class="countdown-value">Завантажуємо події…</div><div id="guest-event-title" class="countdown-caption"></div></div><div class="guest-footnote">ТУП · Спільнота в дії</div></div>
+      <div class="hero-photo-wrap">
+        <div class="hero-photo" role="img" aria-label="Фото спільноти ТУП"></div>
+        <div class="photo-overlay"></div>
+      </div>
+
+      <div class="hero-copy">
+        <p class="eyebrow">ТОВАРИСТВО УКРАЇНСЬКИХ ПОСТУПОВЦІВ</p>
+        <h1>ТУП</h1>
+        <p class="hero-lead">Товариство Українських Поступовців</p>
+        <button class="hero-cta" onclick="openRegister()">
+          Зареєструватися <span>↗</span>
+        </button>
+      </div>
+
+      <div class="guest-bottom">
+        <div class="countdown-panel">
+          <div class="countdown-label">
+            <span class="live-dot"></span>
+            НАЙБЛИЖЧА ПОДІЯ
+          </div>
+          <div id="guest-countdown" class="countdown-value">
+            Завантажуємо події…
+          </div>
+          <div id="guest-event-title" class="countdown-caption"></div>
+        </div>
+      </div>
     </section>
 
-    <section id="auth-section" class="auth-screen" style="display:none"><div class="auth-card"><button class="close-btn" onclick="closeLogin()" aria-label="Закрити">×</button><p class="eyebrow">РАДІ БАЧИТИ ЗНОВУ</p><h2>Вхід до ТУП</h2><input type="email" id="email" placeholder="Електронна пошта" autocomplete="email"><input type="password" id="password" placeholder="Пароль" autocomplete="current-password"><button class="solid-btn full" onclick="login()">Увійти</button><p id="auth-message" class="form-message"></p><button class="text-btn" onclick="openRegister();closeLogin()">Ще не маєш акаунта? Зареєструватися</button></div></section>
+    <!-- Вхід -->
+    <section id="auth-section" class="auth-screen" style="display:none">
+      <div class="auth-card">
+        <button class="close-btn" onclick="closeLogin()" aria-label="Закрити">×</button>
+        <p class="eyebrow">ТУП</p>
+        <h2>Вхід</h2>
 
-    <section id="register-drawer" class="drawer-backdrop" aria-hidden="true"><div class="register-drawer"><div class="drawer-handle"></div><button class="close-btn" onclick="closeRegister()" aria-label="Закрити">×</button><p class="eyebrow">ТВОЯ СПІЛЬНОТА ПОЧИНАЄТЬСЯ ТУТ</p><h2>Приєднуйся до ТУП</h2><p class="muted">Створи акаунт. Після реєстрації адміністратор підтвердить заявку.</p><label for="reg-email">Електронна пошта</label><input type="email" id="reg-email" placeholder="name@example.com" autocomplete="email"><label for="reg-password">Пароль</label><input type="password" id="reg-password" placeholder="Щонайменше 6 символів" autocomplete="new-password"><button class="solid-btn full" onclick="register()">Надіслати заявку</button><p id="register-message" class="form-message"></p><button class="text-btn" onclick="closeRegister();showLogin()">Вже маєш акаунт? Увійти</button></div></section>
+        <form onsubmit="login(event)">
+          <input type="email" id="email" placeholder="Електронна пошта" autocomplete="email" required>
+          <input type="password" id="password" placeholder="Пароль" autocomplete="current-password" required>
+          <button class="solid-btn full" type="submit">Увійти</button>
+        </form>
 
-    <section id="pending-section" class="pending-screen" style="display:none"><div class="auth-card"><span class="pending-icon">✳</span><p class="eyebrow">ЗАЯВКУ ОТРИМАНО</p><h2>Твій наступний крок — на модерації.</h2><p class="muted">Адміністратор перегляне заявку. Щойно її схвалять, тобі відкриється простір ТУП.</p><button class="ghost-btn full" onclick="logout()">Вийти</button></div></section>
+        <p id="auth-message" class="form-message"></p>
+        <button class="text-btn" onclick="openRegister();closeLogin()">
+          Немає акаунта? Зареєструватися
+        </button>
+      </div>
+    </section>
 
+    <!-- Реєстрація -->
+    <section id="register-drawer" class="drawer-backdrop" aria-hidden="true">
+      <div class="register-drawer">
+        <div class="drawer-handle"></div>
+        <button class="close-btn" onclick="closeRegister()" aria-label="Закрити">×</button>
+
+        <p class="eyebrow">ТУП</p>
+        <h2>Реєстрація</h2>
+        <p class="muted">Після реєстрації заявка надійде адміністратору.</p>
+
+        <form onsubmit="register(event)">
+          <label for="reg-name">Ім’я та прізвище</label>
+          <input type="text" id="reg-name" placeholder="Ім’я та прізвище" required>
+
+          <label for="reg-email">Електронна пошта</label>
+          <input type="email" id="reg-email" placeholder="name@example.com" autocomplete="email" required>
+
+          <label for="reg-password">Пароль</label>
+          <input type="password" id="reg-password" placeholder="Щонайменше 6 символів" autocomplete="new-password" required minlength="6">
+
+          <button class="solid-btn full" type="submit">Надіслати заявку</button>
+        </form>
+
+        <p id="register-message" class="form-message"></p>
+        <button class="text-btn" onclick="closeRegister();showLogin()">
+          Уже маєш акаунт? Увійти
+        </button>
+      </div>
+    </section>
+
+    <!-- Очікування схвалення -->
+    <section id="pending-section" class="pending-screen" style="display:none">
+      <div class="auth-card">
+        <span class="pending-icon">✳</span>
+        <p class="eyebrow">ТУП</p>
+        <h2>Заявка очікує схвалення</h2>
+        <p id="pending-greeting" class="muted">
+          Адміністратор перегляне заявку.
+        </p>
+        <button class="ghost-btn full" onclick="logout()">Вийти</button>
+      </div>
+    </section>
+
+    <!-- Основний простір -->
     <section id="main-section" class="member-shell" style="display:none">
-      <div class="member-header"><div class="member-brand"><div class="member-logo"></div><div><p class="eyebrow">ЗАКРИТИЙ ПРОСТІР</p><h1 id="greeting-text">Вітаємо в ТУП</h1></div></div><button class="ghost-btn" onclick="logout()">Вийти ↗</button></div>
-      <div class="countdown-panel member-countdown"><div class="countdown-label"><span class="live-dot"></span> НАЙБЛИЖЧА ПОДІЯ</div><div id="member-countdown" class="countdown-value">Завантажуємо події…</div><div id="member-event-title" class="countdown-caption"></div></div>
-      <nav class="main-nav"><button class="nav-btn active" data-page="news" onclick="showPage('news')">Стрічка</button><button class="nav-btn" data-page="dates" onclick="showPage('dates')">Пам’ятні дати</button><button class="nav-btn" data-page="events" onclick="showPage('events')">Події</button><button id="admin-btn" class="nav-btn admin-nav" style="display:none" onclick="location.href='admin.html'">Адмінка ↗</button></nav>
-      <div id="content-area" class="content-area"></div>
-      <footer class="site-footer">ТУП <span>·</span> Разом творимо спільноту</footer>
+      <div class="member-header">
+        <div class="member-brand">
+          <div class="member-logo"></div>
+          <div>
+            <p class="eyebrow">ТУП</p>
+            <h1 id="greeting-text">Вітаємо</h1>
+          </div>
+        </div>
+        <button class="ghost-btn" onclick="logout()">Вийти ↗</button>
+      </div>
+
+      <div class="countdown-panel member-countdown">
+        <div class="countdown-label">
+          <span class="live-dot"></span>
+          НАЙБЛИЖЧА ПОДІЯ
+        </div>
+        <div id="member-countdown" class="countdown-value">
+          Завантажуємо події…
+        </div>
+        <div id="member-event-title" class="countdown-caption"></div>
+      </div>
+
+      <nav class="main-nav">
+        <button class="nav-btn active" data-page="news" onclick="showPage('news')">Стрічка</button>
+        <button class="nav-btn" data-page="dates" onclick="showPage('dates')">Іменини / смерть</button>
+        <button class="nav-btn" data-page="events" onclick="showPage('events')">Події</button>
+        <button id="admin-btn" class="nav-btn admin-nav" style="display:none" onclick="location.href='admin.html'">Адмінка ↗</button>
+      </nav>
+
+      <div id="content-area" class="content-area">
+        <section id="page-news" class="page"></section>
+        <section id="page-dates" class="page" hidden></section>
+        <section id="page-events" class="page" hidden></section>
+      </div>
+
+      <footer class="site-footer">
+        ТУП
+      </footer>
     </section>
   </main>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script>
-</body></html>
+
+  <div id="drawer-overlay" onclick="closeRegister()"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
