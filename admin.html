@@ -64,7 +64,13 @@
                     <input type="number" id="date-month" placeholder="Місяць (1-12)" style="flex: 1;">
                     <input type="number" id="date-year" placeholder="Рік (напр. 1814)" style="flex: 1;">
                 </div>
-                <label style="margin-top: 10px;"><input type="checkbox" id="date-death"> Це траурна дата (смерть)</label>
+                <label for="date-type" style="margin-top: 10px;">Тип дати</label>
+                <select id="date-type" style="width:100%;margin-bottom:10px;">
+                    <option value="birthday">День народження / іменини</option>
+                    <option value="death">День пам’яті (смерть)</option>
+                    <option value="event">Конкретна історична / пам’ятна подія</option>
+                </select>
+                <textarea id="date-description" rows="2" placeholder="Опис (необов’язково)"></textarea>
                 <button onclick="addDate()" style="margin-top: 10px;">Додати</button>
             </div>
             <h3>Всі дати (автоматично сортовані)</h3>

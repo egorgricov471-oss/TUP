@@ -247,27 +247,28 @@ async function deleteNews(id) {
 }
 
 async function loadDates() {
-    const { data, error } = await db.from('dates').select('*').order('date_month', { ascending: true }).order('date_day', { ascending: true });
+    const { data, error } = await db.from('dates').select('*');
     const list = document.getElementById('dates-list');
     if (error) return showRequestError('Не вдалося завантажити дати', error);
-
+    const now = new Date();
+    const upcoming = (data || []).map(d => {
+        let next = new Date(now.getFullYear(), Number(d.date_month) - 1, Number(d.date_day));
+        if (next < new Date(now.getFullYear(), now.getMonth(), now.getDate())) next = new Date(now.getFullYear() + 1, Number(d.date_month) - 1, Number(d.date_day));
+        return { ...d, next };
+    }).sort((a, b) => a.next - b.next);
     list.innerHTML = '';
-    (data || []).forEach(d => {
+    upcoming.forEach(d => {
         const item = document.createElement('div');
-        item.className = `list-item ${d.is_death ? 'death' : ''}`;
-        const info = document.createElement('div');
-        info.className = 'info';
-        const name = document.createElement('strong');
-        name.textContent = d.person_name;
+        const type = d.date_type || (d.is_death ? 'death' : 'birthday');
+        item.className = `list-item ${type === 'death' ? 'death' : ''}`;
+        const info = document.createElement('div'); info.className = 'info';
+        const name = document.createElement('strong'); name.textContent = d.person_name;
         const detail = document.createElement('small');
-        detail.textContent = `${d.date_day}.${d.date_month}${d.date_year ? '.' + d.date_year : ''} — ${d.is_death ? '🖤 Траур' : '🎂 Свято'}`;
+        const label = type === 'death' ? 'День пам’яті' : type === 'event' ? 'Пам’ятна подія' : 'День народження / іменини';
+        detail.textContent = `${d.date_day}.${d.date_month}${d.date_year ? '.' + d.date_year : ''} — ${label}${d.description ? ' · ' + d.description : ''}`;
         info.append(name, document.createElement('br'), detail);
-        const button = document.createElement('button');
-        button.className = 'secondary';
-        button.textContent = 'Видалити';
-        button.addEventListener('click', () => deleteDate(d.id));
-        item.append(info, button);
-        list.appendChild(item);
+        const button = document.createElement('button'); button.className = 'secondary'; button.textContent = 'Видалити'; button.addEventListener('click', () => deleteDate(d.id));
+        item.append(info, button); list.appendChild(item);
     });
 }
 
@@ -276,18 +277,16 @@ async function addDate() {
     const day = parseInt(document.getElementById('date-day').value, 10);
     const month = parseInt(document.getElementById('date-month').value, 10);
     const year = parseInt(document.getElementById('date-year').value, 10) || null;
-    const is_death = document.getElementById('date-death').checked;
-    if (!name || !day || !month) return alert("Заповніть ім'я, день та місяць!");
-    if (day < 1 || day > 31 || month < 1 || month > 12) return alert('Перевірте день та місяць.');
-
-    const { error } = await db.from('dates').insert([{ person_name: name, date_day: day, date_month: month, date_year: year, is_death }]);
+    const date_type = document.getElementById('date-type').value;
+    const description = document.getElementById('date-description').value.trim();
+    const is_death = date_type === 'death';
+    const check = new Date(2024, month - 1, day);
+    if (!name || !day || !month) return alert("Заповніть назву, день та місяць!");
+    if (day < 1 || day > 31 || month < 1 || month > 12 || check.getDate() !== day || check.getMonth() !== month - 1) return alert('Перевірте день та місяць.');
+    const { error } = await db.from('dates').insert([{ person_name: name, date_day: day, date_month: month, date_year: year, is_death, date_type, description }]);
     if (error) return showRequestError('Не вдалося додати дату', error);
-
-    document.getElementById('date-name').value = '';
-    document.getElementById('date-day').value = '';
-    document.getElementById('date-month').value = '';
-    document.getElementById('date-year').value = '';
-    document.getElementById('date-death').checked = false;
+    ['date-name','date-day','date-month','date-year','date-description'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('date-type').value = 'birthday';
     await loadDates();
 }
 

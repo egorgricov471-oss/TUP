@@ -1,61 +1,34 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Товариство Українських Поступовців</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#11120f"><meta name="description" content="Товариство Українських Поступовців">
+  <title>ТУП — Товариство Українських Поступовців</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ФОРМА ВХОДУ -->
-    <div class="container" id="auth-section" style="display: none;">
-        <h1>Вхід</h1>
-        <div class="card">
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Пароль" required>
-            <button onclick="login()">Увійти</button>
-            <button class="secondary" onclick="register()">Зареєструватися</button>
-            <p id="auth-message" style="color: red;"></p>
-        </div>
-    </div>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar"><a class="brand" href="index.html"><span class="brand-mark">Т</span><span>ТУП<small>Товариство Українських Поступовців</small></span></a><div class="top-actions"><button class="ghost-btn" id="login-open" onclick="showLogin()">Увійти</button><button class="solid-btn" id="header-register" onclick="openRegister()">Приєднатися</button></div></header>
 
-    <!-- Екран "На модерації" -->
-    <div class="container" id="pending-section" style="display: none;">
-        <div class="card" style="text-align: center;">
-            <h2>⏳ Чекаємо на схвалення</h2>
-            <p>Твій акаунт створено. Адмін перевірить його найближчим часом.</p>
-            <button class="secondary" onclick="logout()">Вийти</button>
-        </div>
-    </div>
+  <main>
+    <section id="guest-section" class="guest-shell">
+      <div class="hero-photo-wrap"><div class="hero-photo" role="img" aria-label="Фото спільноти ТУП"></div><div class="photo-overlay"></div><div class="hero-tag">Згуртовані ідеєю. Сильні спільнотою.</div></div>
+      <div class="hero-copy"><p class="eyebrow">ТОВАРИСТВО УКРАЇНСЬКИХ ПОСТУПОВЦІВ</p><h1>Місце, де <em>свої</em> знаходять своїх.</h1><p class="hero-lead">Спільнота, пам’ять, події та люди, які творять щось разом.</p><button class="hero-cta" onclick="openRegister()">Стати частиною ТУП <span>↗</span></button><p class="hero-note">Реєстрація відкрита. Доступ до спільноти — після схвалення адміністратора.</p></div>
+      <div class="guest-bottom"><div class="countdown-panel"><div class="countdown-label"><span class="live-dot"></span> НАЙБЛИЖЧА ПОДІЯ</div><div id="guest-countdown" class="countdown-value">Завантажуємо події…</div><div id="guest-event-title" class="countdown-caption"></div></div><div class="guest-footnote">ТУП · Спільнота в дії</div></div>
+    </section>
 
-    <!-- Екран гостя -->
-    <div class="container" id="guest-section" style="display: none;">
-        <div class="card">
-            <h2 id="guest-news-title">Завантаження...</h2>
-            <p id="guest-news-content">...</p>
-        </div>
-        <div style="text-align: center; margin-top: 20px;">
-            <button onclick="showLogin()">Увійти в систему</button>
-        </div>
-    </div>
+    <section id="auth-section" class="auth-screen" style="display:none"><div class="auth-card"><button class="close-btn" onclick="closeLogin()" aria-label="Закрити">×</button><p class="eyebrow">РАДІ БАЧИТИ ЗНОВУ</p><h2>Вхід до ТУП</h2><input type="email" id="email" placeholder="Електронна пошта" autocomplete="email"><input type="password" id="password" placeholder="Пароль" autocomplete="current-password"><button class="solid-btn full" onclick="login()">Увійти</button><p id="auth-message" class="form-message"></p><button class="text-btn" onclick="openRegister();closeLogin()">Ще не маєш акаунта? Зареєструватися</button></div></section>
 
-    <!-- Головний екран -->
-    <div class="container" id="main-section" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h1 id="greeting-text">Привіт! 👋</h1>
-            <div>
-                <button onclick="showPage('news')">Новини</button>
-                <button onclick="showPage('dates')">Пам'ятні дати</button>
-                <button onclick="showPage('events')">Події</button>
-                <button id="admin-btn" style="display:none;" onclick="window.location.href='admin.html'">Адмінка ⚙️</button>
-                <button class="secondary" onclick="logout()">Вийти</button>
-            </div>
-        </div>
-        
-        <div id="content-area"></div>
-    </div>
+    <section id="register-drawer" class="drawer-backdrop" aria-hidden="true"><div class="register-drawer"><div class="drawer-handle"></div><button class="close-btn" onclick="closeRegister()" aria-label="Закрити">×</button><p class="eyebrow">ТВОЯ СПІЛЬНОТА ПОЧИНАЄТЬСЯ ТУТ</p><h2>Приєднуйся до ТУП</h2><p class="muted">Створи акаунт. Після реєстрації адміністратор підтвердить заявку.</p><label for="reg-email">Електронна пошта</label><input type="email" id="reg-email" placeholder="name@example.com" autocomplete="email"><label for="reg-password">Пароль</label><input type="password" id="reg-password" placeholder="Щонайменше 6 символів" autocomplete="new-password"><button class="solid-btn full" onclick="register()">Надіслати заявку</button><p id="register-message" class="form-message"></p><button class="text-btn" onclick="closeRegister();showLogin()">Вже маєш акаунт? Увійти</button></div></section>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
-</body>
-</html>
+    <section id="pending-section" class="pending-screen" style="display:none"><div class="auth-card"><span class="pending-icon">✳</span><p class="eyebrow">ЗАЯВКУ ОТРИМАНО</p><h2>Твій наступний крок — на модерації.</h2><p class="muted">Адміністратор перегляне заявку. Щойно її схвалять, тобі відкриється простір ТУП.</p><button class="ghost-btn full" onclick="logout()">Вийти</button></div></section>
+
+    <section id="main-section" class="member-shell" style="display:none">
+      <div class="member-header"><div class="member-brand"><div class="member-logo"></div><div><p class="eyebrow">ЗАКРИТИЙ ПРОСТІР</p><h1 id="greeting-text">Вітаємо в ТУП</h1></div></div><button class="ghost-btn" onclick="logout()">Вийти ↗</button></div>
+      <div class="countdown-panel member-countdown"><div class="countdown-label"><span class="live-dot"></span> НАЙБЛИЖЧА ПОДІЯ</div><div id="member-countdown" class="countdown-value">Завантажуємо події…</div><div id="member-event-title" class="countdown-caption"></div></div>
+      <nav class="main-nav"><button class="nav-btn active" data-page="news" onclick="showPage('news')">Стрічка</button><button class="nav-btn" data-page="dates" onclick="showPage('dates')">Пам’ятні дати</button><button class="nav-btn" data-page="events" onclick="showPage('events')">Події</button><button id="admin-btn" class="nav-btn admin-nav" style="display:none" onclick="location.href='admin.html'">Адмінка ↗</button></nav>
+      <div id="content-area" class="content-area"></div>
+      <footer class="site-footer">ТУП <span>·</span> Разом творимо спільноту</footer>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script>
+</body></html>
