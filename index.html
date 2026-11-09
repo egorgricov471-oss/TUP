@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ФОРМА ВХОДУ (видима за замовчуванням) -->
+    <!-- ФОРМА ВХОДУ -->
     <div class="container" id="auth-section">
         <h1>Вхід</h1>
         <div class="card">
@@ -19,7 +19,7 @@
         </div>
     </div>
 
-    <!-- Екран "На модерації" (прихований) -->
+    <!-- Екран "На модерації" -->
     <div class="container" id="pending-section" style="display: none;">
         <div class="card" style="text-align: center;">
             <h2>⏳ Чекаємо на схвалення</h2>
@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <!-- Екран гостя (прихований) -->
+    <!-- Екран гостя -->
     <div class="container" id="guest-section" style="display: none;">
         <div class="card">
             <h2 id="guest-news-title">Завантаження...</h2>
@@ -39,7 +39,7 @@
         </div>
     </div>
 
-    <!-- Головний екран (прихований) -->
+    <!-- Головний екран -->
     <div class="container" id="main-section" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 id="greeting-text">Привіт! 👋</h1>
@@ -55,7 +55,6 @@
         <div id="content-area"></div>
     </div>
 
-    <!-- Підключення бібліотеки Supabase та скрипта -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
 </body>
