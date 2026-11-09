@@ -72,18 +72,19 @@ function showLogin() { showSection('auth-section'); }
 
 async function loadGuestNews() {
     try {
-        const { data } = await db.from('news').select('*').eq('is_pinned', true).single();
+        const { data, error } = await db.from('news').select('*').eq('is_pinned', true).limit(1);
         const titleEl = document.getElementById('guest-news-title');
         const contentEl = document.getElementById('guest-news-content');
         
-        if (data) {
-            if (titleEl) titleEl.innerText = data.title;
-            if (contentEl) contentEl.innerText = data.content;
+        // Якщо є дані і масив не порожній
+        if (data && data.length > 0) {
+            if (titleEl) titleEl.innerText = data[0].title;
+            if (contentEl) contentEl.innerText = data[0].content;
         } else {
             if (titleEl) titleEl.innerText = "Ласкаво просимо!";
             if (contentEl) contentEl.innerText = "Щоб побачити більше, потрібно увійти в систему.";
         }
-    } catch (e) { console.log("Немає новин для гостей"); }
+    } catch (e) { console.log("Помилка завантаження новин:", e); }
 }
 
 async function showPage(page) {
