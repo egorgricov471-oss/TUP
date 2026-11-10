@@ -889,3 +889,98 @@ footer {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* ДВА НЕЗАЛЕЖНІ ТЕГИ ДАТ */
+
+.date-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.date-type,
+.date-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Тип дати */
+
+.date-type {
+  color: var(--accent);
+  background: rgba(196, 214, 107, 0.12);
+  border: 1px solid rgba(196, 214, 107, 0.22);
+}
+
+.date-type-death {
+  color: #c6c6c0;
+  background: rgba(180, 180, 170, 0.10);
+  border-color: rgba(180, 180, 170, 0.2);
+}
+
+.date-type-other {
+  color: #a9b9d7;
+  background: rgba(120, 150, 200, 0.12);
+  border-color: rgba(120, 150, 200, 0.22);
+}
+
+/* Стан: СВЯТО */
+
+.date-card.date-status-holiday {
+  border: 1px solid rgba(196, 214, 107, 0.42);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(196, 214, 107, 0.12),
+      rgba(25, 29, 22, 0.96) 65%
+    );
+}
+
+.date-status-holiday {
+  color: #202414;
+  background: #c4d66b;
+  border: 1px solid #c4d66b;
+}
+
+/* Стан: ТРАУР */
+
+.date-card.date-status-grief {
+  border: 1px solid rgba(160, 160, 160, 0.28);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(100, 100, 100, 0.16),
+      rgba(20, 21, 19, 0.98) 65%
+    );
+}
+
+.date-status-grief {
+  color: #e0e0dc;
+  background: #454641;
+  border: 1px solid #666760;
+}
+
+.date-card.date-status-grief h3 {
+  color: #d0d0ca;
+}
+
+/* Розташування тегів і дати */
+
+.date-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.date-card-top time {
+  color: var(--muted);
+  font-size: 13px;
+}
