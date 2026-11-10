@@ -76,7 +76,7 @@ h2,
 h3,
 h4 {
   line-height: 1.2;
-  margin-top: 0;
+  margin-top: 0;i
 }
 
 h1 {
@@ -983,4 +983,37 @@ footer {
 .date-card-top time {
   color: var(--muted);
   font-size: 13px;
+}
+/* Теги в адмінпанелі */
+
+.admin-item .date-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 0;
+}
+
+.admin-item .date-type,
+.admin-item .date-status {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-item .date-status-holiday {
+  color: #202414;
+  background: #c4d66b;
+}
+
+.admin-item .date-status-grief {
+  color: #e0e0dc;
+  background: #454641;
+}
+
+.admin-item .date-status-none {
+  color: #a5aa98;
+  background: rgba(165, 170, 152, 0.12);
 }
