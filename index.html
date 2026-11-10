@@ -15,15 +15,24 @@
   <header class="topbar">
     <a class="brand" href="index.html">
       <span class="brand-mark">Т</span>
-      <span>ТУП<small>Товариство Українських Поступовців</small></span>
+      <span>
+        ТУП
+        <small>Товариство Українських Поступовців</small>
+      </span>
     </a>
+
     <div class="top-actions">
-      <button class="ghost-btn" id="login-open" onclick="showLogin()">Увійти</button>
-      <button class="solid-btn" id="header-register" onclick="openRegister()">Реєстрація</button>
+      <button class="ghost-btn" id="login-open" type="button" onclick="showLogin()">
+        Увійти
+      </button>
+      <button class="solid-btn" id="header-register" type="button" onclick="openRegister()">
+        Реєстрація
+      </button>
     </div>
   </header>
 
   <main>
+    <!-- ГОЛОВНА ДЛЯ ГОСТЕЙ -->
     <section id="guest-section" class="guest-shell">
       <div class="hero-photo-wrap">
         <div class="hero-photo" role="img" aria-label="Фото спільноти ТУП"></div>
@@ -34,7 +43,8 @@
         <p class="eyebrow">ТОВАРИСТВО УКРАЇНСЬКИХ ПОСТУПОВЦІВ</p>
         <h1>ТУП</h1>
         <p class="hero-lead">Товариство Українських Поступовців</p>
-        <button class="hero-cta" onclick="openRegister()">
+
+        <button class="hero-cta" type="button" onclick="openRegister()">
           Зареєструватися <span>↗</span>
         </button>
       </div>
@@ -45,41 +55,87 @@
             <span class="live-dot"></span>
             НАЙБЛИЖЧА ПОДІЯ
           </div>
+
           <div id="guest-countdown" class="countdown-value">
             Завантажуємо події…
           </div>
+
           <div id="guest-event-title" class="countdown-caption"></div>
         </div>
       </div>
     </section>
 
+    <!-- ВХІД -->
     <section id="auth-section" class="auth-screen" style="display:none">
       <div class="auth-card">
-        <button class="close-btn" onclick="closeLogin()" aria-label="Закрити">×</button>
+        <button
+          class="close-btn"
+          type="button"
+          onclick="closeLogin()"
+          aria-label="Закрити"
+        >×</button>
+
         <p class="eyebrow">ТУП</p>
         <h2>Вхід</h2>
 
         <form onsubmit="login(event)">
-          <input type="email" id="email" placeholder="Електронна пошта" autocomplete="email" required>
-          <input type="password" id="password" placeholder="Пароль" autocomplete="current-password" required>
-          <button class="solid-btn full" type="submit">Увійти</button>
+          <label for="email">Електронна пошта</label>
+          <input
+            type="email"
+            id="email"
+            placeholder="Електронна пошта"
+            autocomplete="email"
+            required
+          >
+
+          <label for="password">Пароль</label>
+          <input
+            type="password"
+            id="password"
+            placeholder="Пароль"
+            autocomplete="current-password"
+            required
+          >
+
+          <button class="solid-btn full" type="submit">
+            Увійти
+          </button>
         </form>
 
-        <p id="auth-message" class="form-message"></p>
-        <button class="text-btn" onclick="closeLogin();openRegister()">
+        <p id="auth-message" class="form-message" aria-live="polite"></p>
+
+        <button
+          class="text-btn"
+          type="button"
+          onclick="closeLogin();openRegister()"
+        >
           Немає акаунта? Зареєструватися
         </button>
       </div>
     </section>
 
-    <section id="register-drawer" class="drawer-backdrop" aria-hidden="true">
+    <!-- РЕЄСТРАЦІЯ -->
+    <section
+      id="register-drawer"
+      class="drawer-backdrop"
+      aria-hidden="true"
+    >
       <div class="register-drawer">
         <div class="drawer-handle"></div>
-        <button class="close-btn" onclick="closeRegister()" aria-label="Закрити">×</button>
+
+        <button
+          class="close-btn"
+          type="button"
+          onclick="closeRegister()"
+          aria-label="Закрити"
+        >×</button>
 
         <p class="eyebrow">ТУП</p>
         <h2>Реєстрація</h2>
-        <p class="muted">Після реєстрації заявка надійде адміністратору.</p>
+
+        <p class="muted">
+          Після реєстрації заявка надійде адміністратору.
+        </p>
 
         <form onsubmit="register(event)">
           <label for="reg-name">Твоє ім’я</label>
@@ -92,94 +148,200 @@
             required
           >
 
-          <label for="reg-avatar">Фото профілю (необов’язково)</label>
-          <input type="file" id="reg-avatar" accept="image/*">
+          <label for="reg-avatar">
+            Фото профілю (необов’язково)
+          </label>
+          <input
+            type="file"
+            id="reg-avatar"
+            accept="image/*"
+          >
 
           <label for="reg-email">Електронна пошта</label>
-          <input type="email" id="reg-email" placeholder="name@example.com" autocomplete="email" required>
+          <input
+            type="email"
+            id="reg-email"
+            placeholder="name@example.com"
+            autocomplete="email"
+            required
+          >
 
           <label for="reg-password">Пароль</label>
-          <input type="password" id="reg-password" placeholder="Щонайменше 6 символів" autocomplete="new-password" required minlength="6">
+          <input
+            type="password"
+            id="reg-password"
+            placeholder="Щонайменше 6 символів"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          >
 
-          <button class="solid-btn full" type="submit">Надіслати заявку</button>
+          <button class="solid-btn full" type="submit">
+            Надіслати заявку
+          </button>
         </form>
 
-        <p id="register-message" class="form-message"></p>
-        <button class="text-btn" onclick="closeRegister();showLogin()">
+        <p id="register-message" class="form-message" aria-live="polite"></p>
+
+        <button
+          class="text-btn"
+          type="button"
+          onclick="closeRegister();showLogin()"
+        >
           Уже маєш акаунт? Увійти
         </button>
       </div>
     </section>
 
+    <!-- ОЧІКУВАННЯ СХВАЛЕННЯ -->
     <section id="pending-section" class="pending-screen" style="display:none">
       <div class="auth-card">
         <span class="pending-icon">✳</span>
+
         <p class="eyebrow">ТУП</p>
         <h2>Заявка очікує схвалення</h2>
+
         <p id="pending-greeting" class="muted">
           Адміністратор перегляне заявку.
         </p>
-        <button class="ghost-btn full" onclick="logout()">Вийти</button>
+
+        <button class="ghost-btn full" type="button" onclick="logout()">
+          Вийти
+        </button>
       </div>
     </section>
 
+    <!-- ОСНОВНИЙ САЙТ ДЛЯ УЧАСНИКІВ -->
     <section id="main-section" class="member-shell" style="display:none">
+
+      <!-- ШАПКА -->
       <div class="member-header">
         <div class="member-brand">
           <div class="member-logo"></div>
+
           <div>
             <p class="eyebrow">ТУП</p>
             <h1 id="greeting-text">Вітаємо</h1>
           </div>
         </div>
-        <button class="ghost-btn" onclick="logout()">Вийти ↗</button>
+
+        <button class="ghost-btn" type="button" onclick="logout()">
+          Вийти ↗
+        </button>
       </div>
 
+      <!-- НАЛАШТУВАННЯ ПРОФІЛЮ -->
       <div class="profile-settings">
         <div class="profile-current">
-          <img id="profile-avatar-preview" class="profile-avatar" alt="Фото профілю">
+          <img
+            id="profile-avatar-preview"
+            class="profile-avatar"
+            alt="Фото профілю"
+          >
+
           <div>
-            <strong id="profile-name-preview"></strong>
+            <strong id="profile-name-preview">Учасник</strong>
             <p>Твоє ім’я та фото, які бачать інші учасники</p>
           </div>
         </div>
 
-        <label for="profile-avatar">Змінити фото (необов’язково)</label>
-        <input type="file" id="profile-avatar" accept="image/*">
-        <button type="button" class="ghost-btn" onclick="changeAvatar()">Зберегти фото</button>
+        <label for="profile-avatar">
+          Змінити фото (необов’язково)
+        </label>
+
+        <input
+          type="file"
+          id="profile-avatar"
+          accept="image/*"
+        >
+
+        <button
+          type="button"
+          class="ghost-btn"
+          onclick="changeAvatar()"
+        >
+          Зберегти фото
+        </button>
       </div>
 
+      <!-- ЗВОРОТНИЙ ВІДЛІК -->
       <div class="countdown-panel member-countdown">
         <div class="countdown-label">
           <span class="live-dot"></span>
           НАЙБЛИЖЧА ПОДІЯ
         </div>
+
         <div id="member-countdown" class="countdown-value">
           Завантажуємо події…
         </div>
+
         <div id="member-event-title" class="countdown-caption"></div>
       </div>
 
-      <nav class="main-nav">
-        <button class="nav-btn active" data-page="news" onclick="showPage('news')">Стрічка</button>
-        <button class="nav-btn" data-page="dates" onclick="showPage('dates')">Дати</button>
-        <button class="nav-btn" data-page="events" onclick="showPage('events')">Події</button>
-        <button id="admin-btn" class="nav-btn admin-nav" style="display:none" onclick="location.href='admin.html'">Адмінка ↗</button>
+      <!-- НАВІГАЦІЯ -->
+      <nav class="main-nav" aria-label="Головна навігація">
+        <button
+          class="nav-btn active"
+          type="button"
+          data-page="news"
+          onclick="showPage('news')"
+        >
+          Стрічка
+        </button>
+
+        <button
+          class="nav-btn"
+          type="button"
+          data-page="dates"
+          onclick="showPage('dates')"
+        >
+          Дати
+        </button>
+
+        <button
+          class="nav-btn"
+          type="button"
+          data-page="events"
+          onclick="showPage('events')"
+        >
+          Події
+        </button>
+
+        <button
+          id="admin-btn"
+          class="nav-btn admin-nav"
+          type="button"
+          style="display:none"
+          onclick="location.href='admin.html'"
+        >
+          Адмінка ↗
+        </button>
       </nav>
 
+      <!-- ВМІСТ СТОРІНОК -->
       <div id="content-area" class="content-area">
         <section id="page-news" class="page"></section>
         <section id="page-dates" class="page" hidden></section>
         <section id="page-events" class="page" hidden></section>
       </div>
 
-      <footer class="site-footer">ТУП</footer>
+      <footer class="site-footer">
+        ТУП
+      </footer>
     </section>
   </main>
 
-  <div id="drawer-overlay" onclick="closeRegister()"></div>
+  <!-- ЗОВНІШНІЙ ФОН ШТОРКИ -->
+  <div
+    id="drawer-overlay"
+    onclick="closeRegister()"
+    aria-hidden="true"
+  ></div>
 
+  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ОСНОВНИЙ JAVASCRIPT -->
   <script src="app.js"></script>
 </body>
 </html>
