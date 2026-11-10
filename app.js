@@ -1,3 +1,4 @@
+
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
 
@@ -13,6 +14,7 @@ let currentUser = null;
 let currentProfile = null;
 let showingAllDates = false;
 let countdownTimer = null;
+let greetingTimer = null;
 
 const $ = id => document.getElementById(id);
 
@@ -63,6 +65,9 @@ function renderProfileAvatar() {
   }
 }
 
+
+/* ЗАВАНТАЖЕННЯ ФОТОГРАФІЇ */
+
 async function uploadAvatar(file) {
   if (!currentUser) {
     throw new Error('Спочатку увійди в акаунт.');
@@ -102,15 +107,57 @@ async function uploadAvatar(file) {
 
   const avatarUrl = publicData.publicUrl;
 
-  const { data: updatedProfile, error: updateError } = await db
+  // Перевіряємо, чи існує профіль.
+  const { data: existingProfile, error: findError } = await db
     .from('profiles')
-    .update({ avatar_url: avatarUrl })
+    .select('id')
     .eq('id', currentUser.id)
-    .select('*')
-    .single();
+    .maybeSingle();
 
-  if (updateError) {
-    throw updateError;
+  if (findError) {
+    throw findError;
+  }
+
+  let updatedProfile;
+
+  if (existingProfile) {
+    // Оновлюємо фотографію в наявному профілі.
+    const { data, error } = await db
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', currentUser.id)
+      .select('*')
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    updatedProfile = data;
+  } else {
+    // Створюємо відсутній профіль.
+    const { data, error } = await db
+      .from('profiles')
+      .insert({
+        id: currentUser.id,
+        full_name: getAuthorName(currentProfile, currentUser),
+        status: 'pending',
+        avatar_url: avatarUrl
+      })
+      .select('*')
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    updatedProfile = data;
+  }
+
+  if (!updatedProfile) {
+    throw new Error(
+      'Профіль не знайдено або немає дозволу на його оновлення.'
+    );
   }
 
   currentProfile = updatedProfile;
@@ -139,6 +186,46 @@ async function changeAvatar() {
     console.error('Помилка завантаження аватара:', error);
     notify('Не вдалося зберегти фото: ' + error.message);
   }
+}
+
+
+/* ПРИВІТАННЯ НА 60 СЕКУНД */
+
+function showGreeting(profile) {
+  const greetingBox = $('greeting-text');
+
+  if (!greetingBox) return;
+
+  if (greetingTimer) {
+    clearTimeout(greetingTimer);
+    greetingTimer = null;
+  }
+
+  const defaultGreeting =
+    `Вітаємо, ${profile?.full_name || 'учаснику'}!`;
+
+  const greeting = profile?.greeting?.trim();
+  const createdAt = profile?.greeting_created_at;
+
+  if (!greeting || !createdAt) {
+    greetingBox.textContent = defaultGreeting;
+    return;
+  }
+
+  const elapsed = Date.now() - new Date(createdAt).getTime();
+  const remaining = 60000 - elapsed;
+
+  if (!Number.isFinite(elapsed) || remaining <= 0) {
+    greetingBox.textContent = defaultGreeting;
+    return;
+  }
+
+  greetingBox.textContent = greeting;
+
+  greetingTimer = setTimeout(() => {
+    greetingBox.textContent = defaultGreeting;
+    greetingTimer = null;
+  }, remaining);
 }
 
 
@@ -280,6 +367,11 @@ async function logout() {
     countdownTimer = null;
   }
 
+  if (greetingTimer) {
+    clearTimeout(greetingTimer);
+    greetingTimer = null;
+  }
+
   location.reload();
 }
 
@@ -305,6 +397,8 @@ async function renderUserState() {
   const admin = $('admin-btn');
 
   if (!user) {
+    currentProfile = null;
+
     guest.hidden = false;
     pending.style.display = 'none';
     main.style.display = 'none';
@@ -361,13 +455,10 @@ async function renderUserState() {
   admin.style.display =
     profile.status === 'admin' ? 'inline-flex' : 'none';
 
-  $('greeting-text').textContent =
-    profile.greeting ||
-    `Вітаємо, ${profile.full_name || 'учаснику'}!`;
+  showGreeting(profile);
 
   showPage('news');
 
-  // Таймер до найближчої дати з таблиці dates
   loadDateCountdown();
 }
 
@@ -615,9 +706,6 @@ function nextAnnualDate(item) {
 
   let year = now.getFullYear();
 
-  // Перевіряємо найближче настання дати.
-  // Для 29 лютого шукаємо наступний рік,
-  // у якому ця дата справді існує.
   for (let i = 0; i <= 8; i++) {
     const candidate = new Date(year + i, month - 1, day);
 
@@ -825,7 +913,7 @@ async function loadEvents() {
 }
 
 
-/* ТАЙМЕР ДО НАЙБЛИЖЧОЇ ДАТИ З ТАБЛИЦІ dates */
+/* ТАЙМЕР ДО НАЙБЛИЖЧОЇ ДАТИ */
 
 async function loadDateCountdown() {
   const guestBox = $('guest-countdown');
@@ -843,8 +931,6 @@ async function loadDateCountdown() {
     memberTitle
   ].filter(Boolean);
 
-  // Прибираємо попередній таймер,
-  // щоб не запускалося кілька інтервалів одночасно.
   if (countdownTimer) {
     clearInterval(countdownTimer);
     countdownTimer = null;
@@ -858,7 +944,6 @@ async function loadDateCountdown() {
     box.textContent = '';
   });
 
-  // Завантажуємо саме дати, а не події.
   const { data, error } = await db
     .from('dates')
     .select('person_name, date_day, date_month, date_year, is_death, date_type, date_status, description');
@@ -873,7 +958,6 @@ async function loadDateCountdown() {
     return;
   }
 
-  // Знаходимо найближчу дату.
   const upcomingDates = (data || [])
     .filter(item => item.date_type !== 'event')
     .map(item => ({
@@ -908,7 +992,6 @@ async function loadDateCountdown() {
     box.textContent = title;
   });
 
-  // Оновлюємо відлік щосекунди.
   function updateTimer() {
     const now = new Date();
 
@@ -919,45 +1002,23 @@ async function loadDateCountdown() {
       countdownBoxes.forEach(box => {
         box.innerHTML = `
           <div class="countdown-values">
-            <div>
-              <strong>0</strong>
-              <span>днів</span>
-            </div>
-            <div>
-              <strong>00</strong>
-              <span>годин</span>
-            </div>
-            <div>
-              <strong>00</strong>
-              <span>хвилин</span>
-            </div>
-            <div>
-              <strong>00</strong>
-              <span>секунд</span>
-            </div>
+            <div><strong>0</strong><span>днів</span></div>
+            <div><strong>00</strong><span>годин</span></div>
+            <div><strong>00</strong><span>хвилин</span></div>
+            <div><strong>00</strong><span>секунд</span></div>
           </div>
         `;
       });
 
       clearInterval(countdownTimer);
       countdownTimer = null;
-
       return;
     }
 
     const days = Math.floor(difference / 86400000);
-
-    const hours = Math.floor(
-      (difference % 86400000) / 3600000
-    );
-
-    const minutes = Math.floor(
-      (difference % 3600000) / 60000
-    );
-
-    const seconds = Math.floor(
-      (difference % 60000) / 1000
-    );
+    const hours = Math.floor((difference % 86400000) / 3600000);
+    const minutes = Math.floor((difference % 3600000) / 60000);
+    const seconds = Math.floor((difference % 60000) / 1000);
 
     const timerHTML = `
       <div class="countdown-values">
@@ -989,7 +1050,6 @@ async function loadDateCountdown() {
   }
 
   updateTimer();
-
   countdownTimer = setInterval(updateTimer, 1000);
 }
 
