@@ -76,7 +76,7 @@ h2,
 h3,
 h4 {
   line-height: 1.2;
-  margin-top: 0;i
+  margin-top: 0;
 }
 
 h1 {
@@ -693,6 +693,8 @@ label {
 
 .comment-avatar {
   object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .comment-avatar-placeholder {
@@ -889,6 +891,7 @@ footer {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
 /* ДВА НЕЗАЛЕЖНІ ТЕГИ ДАТ */
 
 .date-tags {
@@ -970,7 +973,7 @@ footer {
   color: #d0d0ca;
 }
 
-/* Розташування тегів і дати */
+/* РОЗТАШУВАННЯ ТЕГІВ І ДАТИ */
 
 .date-card-top {
   display: flex;
@@ -984,7 +987,8 @@ footer {
   color: var(--muted);
   font-size: 13px;
 }
-/* Теги в адмінпанелі */
+
+/* ТЕГИ В АДМІНПАНЕЛІ */
 
 .admin-item .date-tags {
   display: flex;
