@@ -1,4 +1,3 @@
-
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
 
@@ -31,6 +30,110 @@ function escapeHTML(value) {
 
 function notify(message) {
   alert(message);
+}
+
+/* АВАТАР ПРОФІЛЮ */
+
+function getAuthorName(profile, user = null) {
+  return (
+    profile?.full_name?.trim() ||
+    user?.user_metadata?.full_name?.trim() ||
+    'Учасник'
+  );
+}
+
+function renderProfileAvatar() {
+  const image = $('profile-avatar-preview');
+  const name = $('profile-name-preview');
+
+  if (name) {
+    name.textContent = getAuthorName(currentProfile, currentUser);
+  }
+
+  if (!image) return;
+
+  if (currentProfile?.avatar_url) {
+    image.src = currentProfile.avatar_url;
+    image.style.display = 'block';
+  } else {
+    image.removeAttribute('src');
+    image.style.display = 'none';
+  }
+}
+
+async function uploadAvatar(file) {
+  if (!currentUser) {
+    throw new Error('Спочатку увійди в акаунт.');
+  }
+
+  if (!file) {
+    throw new Error('Спочатку вибери зображення.');
+  }
+
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Можна завантажувати лише зображення.');
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('Розмір зображення не повинен перевищувати 5 МБ.');
+  }
+
+  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const safeExtension = /^[a-z0-9]+$/.test(extension) ? extension : 'jpg';
+  const filePath = `${currentUser.id}/${Date.now()}.${safeExtension}`;
+
+  const { error: uploadError } = await db.storage
+    .from('avatars')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true,
+      contentType: file.type
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data: publicData } = db.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  const avatarUrl = publicData.publicUrl;
+
+  const { data: updatedProfile, error: updateError } = await db
+    .from('profiles')
+    .update({ avatar_url: avatarUrl })
+    .eq('id', currentUser.id)
+    .select('*')
+    .single();
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  currentProfile = updatedProfile;
+  renderProfileAvatar();
+
+  return avatarUrl;
+}
+
+async function changeAvatar() {
+  const input = $('profile-avatar');
+  const file = input?.files?.[0];
+
+  if (!file) {
+    return notify('Спочатку вибери фото.');
+  }
+
+  try {
+    await uploadAvatar(file);
+    input.value = '';
+    notify('Фото профілю успішно збережено.');
+    await loadNews();
+  } catch (error) {
+    console.error('Помилка завантаження аватара:', error);
+    notify('Не вдалося зберегти фото: ' + error.message);
+  }
 }
 
 /* ВХІД І РЕЄСТРАЦІЯ */
@@ -206,6 +309,7 @@ async function renderUserState() {
   }
 
   currentProfile = profile;
+  renderProfileAvatar();
 
   guest.hidden = true;
   $('auth-section').style.display = 'none';
@@ -348,7 +452,6 @@ async function loadComments(newsId) {
     return;
   }
 
-  // Отримуємо профілі авторів старих коментарів.
   const userIds = [
     ...new Set(
       data.map(comment => comment.user_id).filter(Boolean)
@@ -360,48 +463,61 @@ async function loadComments(newsId) {
   if (userIds.length) {
     const { data: profiles, error: profilesError } = await db
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, avatar_url')
       .in('id', userIds);
 
     if (!profilesError && profiles) {
       profilesById = Object.fromEntries(
-        profiles.map(profile => [
-          profile.id,
-          profile.full_name
-        ])
+        profiles.map(profile => [profile.id, profile])
       );
     } else if (profilesError) {
       console.warn(
-        'Не вдалося отримати імена профілів:',
+        'Не вдалося отримати профілі авторів:',
         profilesError
       );
     }
   }
 
   box.innerHTML = data.map(comment => {
-    const profileName = profilesById[comment.user_id];
-    const savedName = comment.author_name || '';
-
+    const profile = profilesById[comment.user_id];
     const authorName =
-      profileName?.trim() ||
+      profile?.full_name?.trim() ||
       (
-        savedName && !savedName.includes('@')
-          ? savedName
+        comment.author_name &&
+        !comment.author_name.includes('@')
+          ? comment.author_name
           : ''
       ) ||
       'Учасник';
 
+    const avatar = profile?.avatar_url
+      ? `
+        <img
+          class="comment-avatar"
+          src="${escapeHTML(profile.avatar_url)}"
+          alt=""
+          loading="lazy"
+        >
+      `
+      : `
+        <div class="comment-avatar-placeholder">
+          ${escapeHTML(authorName.charAt(0).toUpperCase())}
+        </div>
+      `;
+
     return `
       <div class="comment">
-        <strong>${escapeHTML(authorName)}</strong>
+        ${avatar}
 
-        <p>
-          ${escapeHTML(
+        <div class="comment-body">
+          <strong>${escapeHTML(authorName)}</strong>
+
+          <p>${escapeHTML(
             comment.content || comment.comment || ''
-          )}
-        </p>
+          )}</p>
 
-        <time>${formatDate(comment.created_at)}</time>
+          <time>${formatDate(comment.created_at)}</time>
+        </div>
       </div>
     `;
   }).join('');
@@ -419,11 +535,7 @@ async function addComment(event, newsId) {
 
   if (!content) return;
 
-  // Ім'я беремо з профілю, ніколи не підставляємо email.
-  const authorName =
-    currentProfile.full_name?.trim() ||
-    currentUser.user_metadata?.full_name?.trim() ||
-    'Учасник';
+  const authorName = getAuthorName(currentProfile, currentUser);
 
   const { error } = await db
     .from('comments')
