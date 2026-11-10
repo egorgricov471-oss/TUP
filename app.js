@@ -47,17 +47,17 @@ function closeLogin() {
 
 function openRegister() {
   const drawer = $('register-drawer');
+
   drawer.classList.add('open');
   drawer.setAttribute('aria-hidden', 'false');
-  $('drawer-overlay').classList.add('visible');
   document.body.classList.add('drawer-open');
 }
 
 function closeRegister() {
   const drawer = $('register-drawer');
+
   drawer.classList.remove('open');
   drawer.setAttribute('aria-hidden', 'true');
-  $('drawer-overlay').classList.remove('visible');
   document.body.classList.remove('drawer-open');
 }
 
@@ -90,14 +90,11 @@ async function register(event) {
   const name = $('reg-name').value.trim();
   const email = $('reg-email').value.trim();
   const password = $('reg-password').value;
-  const avatarFile = $('reg-avatar').files?.[0] || null;
 
   if (!name || !email || password.length < 6) {
-    return notify('Введи ім’я, електронну пошту та пароль щонайменше з 6 символів.');
-  }
-
-  if (avatarFile && !validateImage(avatarFile)) {
-    return;
+    return notify(
+      'Заповни всі поля. Пароль має містити щонайменше 6 символів.'
+    );
   }
 
   const { data, error } = await db.auth.signUp({
@@ -105,7 +102,7 @@ async function register(event) {
     password,
     options: {
       data: {
-        display_name: name
+        full_name: name
       }
     }
   });
@@ -114,48 +111,34 @@ async function register(event) {
     return notify('Помилка реєстрації: ' + error.message);
   }
 
-  if (!data.user) {
-    return notify('Не вдалося створити користувача.');
-  }
+  if (data.user) {
+    const { error: profileError } = await db
+      .from('profiles')
+      .upsert({
+        id: data.user.id,
+        full_name: name,
+        status: 'pending'
+      });
 
-  const { error: profileError } = await db.from('profiles').upsert({
-    id: data.user.id,
-    full_name: name,
-    display_name: name,
-    status: 'pending'
-  });
+    if (profileError) {
+      console.error(profileError);
 
-  if (profileError) {
-    console.error(profileError);
-    return notify('Акаунт створено, але профіль не записано: ' + profileError.message);
+      return notify(
+        'Акаунт створено, але профіль не записано: ' +
+        profileError.message
+      );
+    }
   }
 
   $('reg-name').value = '';
   $('reg-email').value = '';
   $('reg-password').value = '';
-  $('reg-avatar').value = '';
 
   closeRegister();
 
-  if (data.session) {
-    currentUser = data.user;
-    currentProfile = {
-      id: data.user.id,
-      display_name: name,
-      full_name: name,
-      status: 'pending'
-    };
+  notify('Заявку надіслано. Дочекайся схвалення адміністратора.');
 
-    if (avatarFile) {
-      await uploadAvatar(avatarFile);
-    }
-
-    notify('Заявку надіслано. Дочекайся схвалення адміністратора.');
-    await renderUserState();
-  } else {
-    notify('Заявку створено. Якщо Supabase попросить підтвердити пошту, перейди за посиланням у листі. Після входу зможеш додати фото.');
-    $('guest-section').hidden = false;
-  }
+  await renderUserState();
 }
 
 async function logout() {
@@ -167,109 +150,8 @@ async function logout() {
 
   currentUser = null;
   currentProfile = null;
+
   location.reload();
-}
-
-/* ФОТО ПРОФІЛЮ */
-
-function validateImage(file) {
-  if (!file.type.startsWith('image/')) {
-    notify('Вибери файл зображення.');
-    return false;
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    notify('Фото має бути не більше 5 МБ.');
-    return false;
-  }
-
-  return true;
-}
-
-async function uploadAvatar(file) {
-  if (!currentUser || !file) return false;
-
-  if (!validateImage(file)) return false;
-
-  const extension = file.name.split('.').pop().toLowerCase();
-  const path = `${currentUser.id}/avatar.${extension}`;
-
-  const { error: uploadError } = await db.storage
-    .from('avatars')
-    .upload(path, file, {
-      upsert: true,
-      contentType: file.type
-    });
-
-  if (uploadError) {
-    console.error(uploadError);
-    notify('Не вдалося завантажити фото: ' + uploadError.message);
-    return false;
-  }
-
-  const { data } = db.storage
-    .from('avatars')
-    .getPublicUrl(path);
-
-  const avatarUrl = data.publicUrl + '?t=' + Date.now();
-
-  const { error: profileError } = await db
-    .from('profiles')
-    .update({ avatar_url: avatarUrl })
-    .eq('id', currentUser.id);
-
-  if (profileError) {
-    console.error(profileError);
-    notify('Фото завантажено, але профіль не оновлено: ' + profileError.message);
-    return false;
-  }
-
-  if (currentProfile) {
-    currentProfile.avatar_url = avatarUrl;
-  }
-
-  renderProfilePreview();
-  return true;
-}
-
-async function changeAvatar() {
-  const input = $('profile-avatar');
-  const file = input.files?.[0];
-
-  if (!file) {
-    return notify('Спочатку вибери фото.');
-  }
-
-  const success = await uploadAvatar(file);
-  input.value = '';
-
-  if (success) {
-    notify('Фото профілю оновлено.');
-  }
-}
-
-function renderProfilePreview() {
-  if (!currentProfile) return;
-
-  const preview = $('profile-avatar-preview');
-  const name = $('profile-name-preview');
-
-  if (name) {
-    name.textContent =
-      currentProfile.display_name ||
-      currentProfile.full_name ||
-      '';
-  }
-
-  if (preview) {
-    if (currentProfile.avatar_url) {
-      preview.src = currentProfile.avatar_url;
-      preview.style.display = 'block';
-    } else {
-      preview.removeAttribute('src');
-      preview.style.display = 'none';
-    }
-  }
 }
 
 /* СТАН КОРИСТУВАЧА */
@@ -297,7 +179,7 @@ async function renderUserState() {
     pending.style.display = 'none';
     main.style.display = 'none';
     admin.style.display = 'none';
-    $('auth-section').style.display = 'none';
+
     loadCountdown();
     return;
   }
@@ -324,7 +206,8 @@ async function renderUserState() {
     admin.style.display = 'none';
 
     $('pending-greeting').textContent =
-      profile?.greeting || 'Твоя заявка очікує схвалення адміністратора.';
+      profile?.greeting ||
+      'Твоя заявка очікує схвалення адміністратора.';
 
     return;
   }
@@ -342,16 +225,9 @@ async function renderUserState() {
   admin.style.display =
     profile.status === 'admin' ? 'inline-flex' : 'none';
 
-  const displayName =
-    profile.display_name ||
-    profile.full_name ||
-    user.user_metadata?.display_name ||
-    'Учасник';
-
   $('greeting-text').textContent =
-    profile.greeting || `Вітаємо, ${displayName}`;
-
-  renderProfilePreview();
+    profile.greeting ||
+    `Вітаємо, ${profile.full_name || user.email || ''}`;
 
   showPage('news');
   loadCountdown();
@@ -365,7 +241,10 @@ function showPage(page) {
   });
 
   document.querySelectorAll('[data-page]').forEach(button => {
-    button.classList.toggle('active', button.dataset.page === page);
+    button.classList.toggle(
+      'active',
+      button.dataset.page === page
+    );
   });
 
   if (page === 'news') loadNews();
@@ -377,6 +256,7 @@ function showPage(page) {
 
 async function loadNews() {
   const box = $('page-news');
+
   if (!box) return;
 
   box.innerHTML = '<p>Завантаження новин...</p>';
@@ -399,15 +279,29 @@ async function loadNews() {
   box.innerHTML = data.map(item => `
     <article class="news-card">
       <h3>${escapeHTML(item.title)}</h3>
-      <p class="news-date">${formatDate(item.created_at)}</p>
-      <div class="news-content">${escapeHTML(item.content).replace(/\n/g, '<br>')}</div>
+
+      <p class="news-date">
+        ${formatDate(item.created_at)}
+      </p>
+
+      <div class="news-content">
+        ${escapeHTML(item.content).replace(/\n/g, '<br>')}
+      </div>
 
       <section class="comments-section">
         <h4>Коментарі</h4>
-        <div id="comments-${escapeHTML(item.id)}">Завантаження...</div>
+
+        <div id="comments-${escapeHTML(item.id)}">
+          Завантаження...
+        </div>
 
         <form onsubmit="addComment(event, '${escapeHTML(item.id)}')">
-          <textarea name="comment" placeholder="Написати коментар..." required></textarea>
+          <textarea
+            name="comment"
+            placeholder="Написати коментар..."
+            required
+          ></textarea>
+
           <button type="submit">Надіслати</button>
         </form>
       </section>
@@ -421,6 +315,7 @@ async function loadNews() {
 
 async function loadComments(newsId) {
   const box = $(`comments-${newsId}`);
+
   if (!box) return;
 
   const { data, error } = await db
@@ -435,25 +330,21 @@ async function loadComments(newsId) {
     return;
   }
 
-  if (!data?.length) {
-    box.innerHTML = '<p>Коментарів поки немає.</p>';
-    return;
-  }
+  box.innerHTML = !data?.length
+    ? '<p>Коментарів поки немає.</p>'
+    : data.map(comment => `
+        <div class="comment">
+          <strong>
+            ${escapeHTML(comment.author_name || 'Учасник')}
+          </strong>
 
-  box.innerHTML = data.map(comment => `
-    <div class="comment">
-      ${comment.author_avatar
-        ? `<img src="${escapeHTML(comment.author_avatar)}" alt="" class="comment-avatar">`
-        : `<div class="comment-avatar-placeholder">${escapeHTML((comment.author_name || 'У').charAt(0).toUpperCase())}</div>`
-      }
+          <p>
+            ${escapeHTML(comment.content || comment.comment || '')}
+          </p>
 
-      <div class="comment-body">
-        <strong>${escapeHTML(comment.author_name || 'Учасник')}</strong>
-        <p>${escapeHTML(comment.content || comment.comment || '')}</p>
-        <time>${formatDate(comment.created_at)}</time>
-      </div>
-    </div>
-  `).join('');
+          <time>${formatDate(comment.created_at)}</time>
+        </div>
+      `).join('');
 }
 
 async function addComment(event, newsId) {
@@ -468,31 +359,30 @@ async function addComment(event, newsId) {
 
   if (!content) return;
 
-  const authorName =
-    currentProfile.display_name ||
-    currentProfile.full_name ||
-    'Учасник';
-
-  const { error } = await db.from('comments').insert([{
-    news_id: newsId,
-    user_id: currentUser.id,
-    author_name: authorName,
-    author_avatar: currentProfile.avatar_url || null,
-    content
-  }]);
+  const { error } = await db
+    .from('comments')
+    .insert([{
+      news_id: newsId,
+      user_id: currentUser.id,
+      author_name:
+        currentProfile.full_name || currentUser.email,
+      content
+    }]);
 
   if (error) {
     return notify('Помилка коментаря: ' + error.message);
   }
 
   form.reset();
+
   await loadComments(newsId);
 }
 
-/* ІМЕНИНИ ТА ДНІ СМЕРТІ */
+/* ДАТИ: ДВА НЕЗАЛЕЖНІ ТЕГИ */
 
 function nextAnnualDate(item) {
   const now = new Date();
+
   const today = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -516,8 +406,29 @@ function nextAnnualDate(item) {
   return next;
 }
 
+function getDateTypeLabel(type) {
+  const labels = {
+    birthday: 'Іменини',
+    death: 'Смерть',
+    other: 'Інше'
+  };
+
+  return labels[type] || 'Інше';
+}
+
+function getDateStatusLabel(status) {
+  const labels = {
+    holiday: 'Свято',
+    grief: 'Траур',
+    none: ''
+  };
+
+  return labels[status] || '';
+}
+
 async function loadDates() {
   const box = $('page-dates');
+
   if (!box) return;
 
   box.innerHTML = '<p>Завантаження дат...</p>';
@@ -551,24 +462,48 @@ async function loadDates() {
       item.date_year || ''
     ].filter(Boolean).join('.');
 
-    const isDeath =
-      item.date_type === 'death' ||
-      item.is_death;
+    // Перший тег — тип дати
+    const type = item.date_type ||
+      (item.is_death ? 'death' : 'birthday');
+
+    // Другий тег — незалежний стан
+    const status = item.date_status || 'none';
+
+    const statusClass =
+      status === 'holiday'
+        ? 'date-status-holiday'
+        : status === 'grief'
+          ? 'date-status-grief'
+          : '';
+
+    const statusLabel = getDateStatusLabel(status);
 
     return `
-      <article class="date-card">
+      <article class="date-card ${statusClass}">
         <div class="date-card-top">
-          <span class="date-type">
-            ${isDeath ? 'День смерті' : 'Іменини / день народження'}
-          </span>
+          <div class="date-tags">
+            <span class="date-type date-type-${escapeHTML(type)}">
+              ${getDateTypeLabel(type)}
+            </span>
+
+            ${
+              statusLabel
+                ? `<span class="date-status date-status-${escapeHTML(status)}">
+                    ${statusLabel}
+                   </span>`
+                : ''
+            }
+          </div>
+
           <time>${escapeHTML(date)}</time>
         </div>
 
         <h3>${escapeHTML(item.person_name)}</h3>
 
-        ${item.description
-          ? `<p>${escapeHTML(item.description)}</p>`
-          : ''
+        ${
+          item.description
+            ? `<p>${escapeHTML(item.description)}</p>`
+            : ''
         }
 
         <small>
@@ -581,7 +516,10 @@ async function loadDates() {
 
   if (dates.length > 10) {
     box.innerHTML += `
-      <button class="show-all-button" onclick="toggleAllDates()">
+      <button
+        class="show-all-button"
+        onclick="toggleAllDates()"
+      >
         ${showingAllDates ? 'Показати менше' : 'Переглянути всі'}
       </button>
     `;
@@ -597,6 +535,7 @@ function toggleAllDates() {
 
 async function loadEvents() {
   const box = $('page-events');
+
   if (!box) return;
 
   box.innerHTML = '<p>Завантаження подій...</p>';
@@ -619,12 +558,12 @@ async function loadEvents() {
 
   const labels = {
     holiday: 'Свято',
-    grief: 'Горе',
+    grief: 'Траур',
     other: 'Інше'
   };
 
   box.innerHTML = data.map(item => `
-    <article class="event-card">
+    <article class="event-card event-${escapeHTML(item.event_type || 'other')}">
       <span class="event-type event-${escapeHTML(item.event_type || 'other')}">
         ${labels[item.event_type] || 'Інше'}
       </span>
@@ -638,9 +577,10 @@ async function loadEvents() {
         })}
       </time>
 
-      ${item.description
-        ? `<p>${escapeHTML(item.description)}</p>`
-        : ''
+      ${
+        item.description
+          ? `<p>${escapeHTML(item.description)}</p>`
+          : ''
       }
     </article>
   `).join('');
@@ -664,15 +604,25 @@ async function loadCountdown() {
   if (error) {
     console.error('Помилка відліку:', error);
 
-    if (guestBox) guestBox.textContent = 'Не вдалося завантажити подію.';
-    if (memberBox) memberBox.textContent = 'Не вдалося завантажити подію.';
+    if (guestBox) {
+      guestBox.textContent = 'Не вдалося завантажити подію.';
+    }
+
+    if (memberBox) {
+      memberBox.textContent = 'Не вдалося завантажити подію.';
+    }
 
     return;
   }
 
   if (!data?.length) {
-    if (guestBox) guestBox.textContent = 'Найближчих подій поки немає.';
-    if (memberBox) memberBox.textContent = 'Найближчих подій поки немає.';
+    if (guestBox) {
+      guestBox.textContent = 'Найближчих подій поки немає.';
+    }
+
+    if (memberBox) {
+      memberBox.textContent = 'Найближчих подій поки немає.';
+    }
 
     if (countdownTimer) {
       clearInterval(countdownTimer);
@@ -688,8 +638,13 @@ async function loadCountdown() {
     const distance = target - Date.now();
 
     if (distance <= 0) {
-      if (guestBox) guestBox.textContent = 'Подія вже почалася.';
-      if (memberBox) memberBox.textContent = 'Подія вже почалася.';
+      if (guestBox) {
+        guestBox.textContent = 'Подія вже почалася.';
+      }
+
+      if (memberBox) {
+        memberBox.textContent = 'Подія вже почалася.';
+      }
 
       clearInterval(countdownTimer);
       loadCountdown();
@@ -703,10 +658,25 @@ async function loadCountdown() {
 
     const html = `
       <div class="countdown-values">
-        <div><strong>${days}</strong><span>днів</span></div>
-        <div><strong>${String(hours).padStart(2, '0')}</strong><span>годин</span></div>
-        <div><strong>${String(minutes).padStart(2, '0')}</strong><span>хвилин</span></div>
-        <div><strong>${String(seconds).padStart(2, '0')}</strong><span>секунд</span></div>
+        <div>
+          <strong>${days}</strong>
+          <span>днів</span>
+        </div>
+
+        <div>
+          <strong>${String(hours).padStart(2, '0')}</strong>
+          <span>годин</span>
+        </div>
+
+        <div>
+          <strong>${String(minutes).padStart(2, '0')}</strong>
+          <span>хвилин</span>
+        </div>
+
+        <div>
+          <strong>${String(seconds).padStart(2, '0')}</strong>
+          <span>секунд</span>
+        </div>
       </div>
     `;
 
@@ -722,10 +692,9 @@ async function loadCountdown() {
   }
 
   update();
+
   countdownTimer = setInterval(update, 1000);
 }
-
-/* ФОРМАТУВАННЯ ДАТ */
 
 function formatDate(value) {
   if (!value) return '';
