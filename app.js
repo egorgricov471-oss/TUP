@@ -1,3 +1,4 @@
+
 const SUPABASE_URL = 'https://aieejqdwwqcccydkoref.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Pza6nTM9hpf9SNUUt8MYmw_7heik_hR';
 
@@ -15,6 +16,8 @@ let showingAllDates = false;
 let countdownTimer = null;
 
 const $ = id => document.getElementById(id);
+
+/* БЕЗПЕЧНЕ ВІДОБРАЖЕННЯ ТЕКСТУ */
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -136,9 +139,14 @@ async function register(event) {
 
   closeRegister();
 
-  notify('Заявку надіслано. Дочекайся схвалення адміністратора.');
-
-  await renderUserState();
+  if (data.session) {
+    await renderUserState();
+  } else {
+    notify(
+      'Заявку створено. Якщо підтвердження пошти увімкнене, ' +
+      'спочатку підтверди адресу через лист.'
+    );
+  }
 }
 
 async function logout() {
@@ -192,7 +200,9 @@ async function renderUserState() {
 
   if (error) {
     console.error(error);
-    return notify('Помилка завантаження профілю: ' + error.message);
+    return notify(
+      'Помилка завантаження профілю: ' + error.message
+    );
   }
 
   currentProfile = profile;
@@ -227,7 +237,7 @@ async function renderUserState() {
 
   $('greeting-text').textContent =
     profile.greeting ||
-    `Вітаємо, ${profile.full_name || user.email || ''}`;
+    `Вітаємо, ${profile.full_name || 'учаснику'}!`;
 
   showPage('news');
   loadCountdown();
@@ -267,7 +277,8 @@ async function loadNews() {
     .order('created_at', { ascending: false });
 
   if (error) {
-    box.textContent = 'Помилка завантаження новин: ' + error.message;
+    box.textContent =
+      'Помилка завантаження новин: ' + error.message;
     return;
   }
 
@@ -313,6 +324,8 @@ async function loadNews() {
   }
 }
 
+/* ІМЕНА АВТОРІВ І КОМЕНТАРІ */
+
 async function loadComments(newsId) {
   const box = $(`comments-${newsId}`);
 
@@ -326,25 +339,72 @@ async function loadComments(newsId) {
 
   if (error) {
     box.textContent = 'Не вдалося завантажити коментарі.';
-    console.error(error);
+    console.error('Помилка завантаження коментарів:', error);
     return;
   }
 
-  box.innerHTML = !data?.length
-    ? '<p>Коментарів поки немає.</p>'
-    : data.map(comment => `
-        <div class="comment">
-          <strong>
-            ${escapeHTML(comment.author_name || 'Учасник')}
-          </strong>
+  if (!data?.length) {
+    box.innerHTML = '<p>Коментарів поки немає.</p>';
+    return;
+  }
 
-          <p>
-            ${escapeHTML(comment.content || comment.comment || '')}
-          </p>
+  // Отримуємо профілі авторів старих коментарів.
+  const userIds = [
+    ...new Set(
+      data.map(comment => comment.user_id).filter(Boolean)
+    )
+  ];
 
-          <time>${formatDate(comment.created_at)}</time>
-        </div>
-      `).join('');
+  let profilesById = {};
+
+  if (userIds.length) {
+    const { data: profiles, error: profilesError } = await db
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', userIds);
+
+    if (!profilesError && profiles) {
+      profilesById = Object.fromEntries(
+        profiles.map(profile => [
+          profile.id,
+          profile.full_name
+        ])
+      );
+    } else if (profilesError) {
+      console.warn(
+        'Не вдалося отримати імена профілів:',
+        profilesError
+      );
+    }
+  }
+
+  box.innerHTML = data.map(comment => {
+    const profileName = profilesById[comment.user_id];
+    const savedName = comment.author_name || '';
+
+    const authorName =
+      profileName?.trim() ||
+      (
+        savedName && !savedName.includes('@')
+          ? savedName
+          : ''
+      ) ||
+      'Учасник';
+
+    return `
+      <div class="comment">
+        <strong>${escapeHTML(authorName)}</strong>
+
+        <p>
+          ${escapeHTML(
+            comment.content || comment.comment || ''
+          )}
+        </p>
+
+        <time>${formatDate(comment.created_at)}</time>
+      </div>
+    `;
+  }).join('');
 }
 
 async function addComment(event, newsId) {
@@ -359,18 +419,27 @@ async function addComment(event, newsId) {
 
   if (!content) return;
 
+  // Ім'я беремо з профілю, ніколи не підставляємо email.
+  const authorName =
+    currentProfile.full_name?.trim() ||
+    currentUser.user_metadata?.full_name?.trim() ||
+    'Учасник';
+
   const { error } = await db
     .from('comments')
     .insert([{
       news_id: newsId,
       user_id: currentUser.id,
-      author_name:
-        currentProfile.full_name || currentUser.email,
-      content
+      author_name: authorName,
+      content: content
     }]);
 
   if (error) {
-    return notify('Помилка коментаря: ' + error.message);
+    console.error('Помилка коментаря:', error);
+
+    return notify(
+      'Помилка коментаря: ' + error.message
+    );
   }
 
   form.reset();
@@ -438,13 +507,17 @@ async function loadDates() {
     .select('*');
 
   if (error) {
-    box.textContent = 'Помилка завантаження дат: ' + error.message;
+    box.textContent =
+      'Помилка завантаження дат: ' + error.message;
     return;
   }
 
   const dates = (data || [])
     .filter(item => item.date_type !== 'event')
-    .sort((a, b) => nextAnnualDate(a) - nextAnnualDate(b));
+    .sort(
+      (a, b) =>
+        nextAnnualDate(a) - nextAnnualDate(b)
+    );
 
   if (!dates.length) {
     box.innerHTML = '<p>Записів поки немає.</p>';
@@ -462,11 +535,9 @@ async function loadDates() {
       item.date_year || ''
     ].filter(Boolean).join('.');
 
-    // Перший тег — тип дати
     const type = item.date_type ||
       (item.is_death ? 'death' : 'birthday');
 
-    // Другий тег — незалежний стан
     const status = item.date_status || 'none';
 
     const statusClass =
@@ -490,7 +561,7 @@ async function loadDates() {
               statusLabel
                 ? `<span class="date-status date-status-${escapeHTML(status)}">
                     ${statusLabel}
-                   </span>`
+                  </span>`
                 : ''
             }
           </div>
@@ -520,7 +591,9 @@ async function loadDates() {
         class="show-all-button"
         onclick="toggleAllDates()"
       >
-        ${showingAllDates ? 'Показати менше' : 'Переглянути всі'}
+        ${showingAllDates
+          ? 'Показати менше'
+          : 'Переглянути всі'}
       </button>
     `;
   }
@@ -547,7 +620,8 @@ async function loadEvents() {
     .order('event_date', { ascending: true });
 
   if (error) {
-    box.textContent = 'Помилка завантаження подій: ' + error.message;
+    box.textContent =
+      'Помилка завантаження подій: ' + error.message;
     return;
   }
 
@@ -564,7 +638,7 @@ async function loadEvents() {
 
   box.innerHTML = data.map(item => `
     <article class="event-card event-${escapeHTML(item.event_type || 'other')}">
-      <span class="event-type event-${escapeHTML(item.event_type || 'other')}">
+      <span class="event-type">
         ${labels[item.event_type] || 'Інше'}
       </span>
 
@@ -626,6 +700,7 @@ async function loadCountdown() {
 
     if (countdownTimer) {
       clearInterval(countdownTimer);
+      countdownTimer = null;
     }
 
     return;
@@ -647,14 +722,22 @@ async function loadCountdown() {
       }
 
       clearInterval(countdownTimer);
+      countdownTimer = null;
+
       loadCountdown();
       return;
     }
 
     const days = Math.floor(distance / 86400000);
-    const hours = Math.floor(distance % 86400000 / 3600000);
-    const minutes = Math.floor(distance % 3600000 / 60000);
-    const seconds = Math.floor(distance % 60000 / 1000);
+    const hours = Math.floor(
+      distance % 86400000 / 3600000
+    );
+    const minutes = Math.floor(
+      distance % 3600000 / 60000
+    );
+    const seconds = Math.floor(
+      distance % 60000 / 1000
+    );
 
     const html = `
       <div class="countdown-values">
@@ -683,8 +766,13 @@ async function loadCountdown() {
     if (guestBox) guestBox.innerHTML = html;
     if (memberBox) memberBox.innerHTML = html;
 
-    if (guestTitle) guestTitle.textContent = event.title;
-    if (memberTitle) memberTitle.textContent = event.title;
+    if (guestTitle) {
+      guestTitle.textContent = event.title;
+    }
+
+    if (memberTitle) {
+      memberTitle.textContent = event.title;
+    }
   }
 
   if (countdownTimer) {
@@ -695,6 +783,8 @@ async function loadCountdown() {
 
   countdownTimer = setInterval(update, 1000);
 }
+
+/* ФОРМАТУВАННЯ ДАТ */
 
 function formatDate(value) {
   if (!value) return '';
