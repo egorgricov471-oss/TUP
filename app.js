@@ -16,6 +16,7 @@ let countdownTimer = null;
 
 const $ = id => document.getElementById(id);
 
+
 /* БЕЗПЕЧНЕ ВІДОБРАЖЕННЯ ТЕКСТУ */
 
 function escapeHTML(value) {
@@ -31,6 +32,7 @@ function escapeHTML(value) {
 function notify(message) {
   alert(message);
 }
+
 
 /* АВАТАР ПРОФІЛЮ */
 
@@ -86,7 +88,7 @@ async function uploadAvatar(file) {
     .from('avatars')
     .upload(filePath, file, {
       cacheControl: '3600',
-      upsert: true,
+      upsert: false,
       contentType: file.type
     });
 
@@ -127,14 +129,18 @@ async function changeAvatar() {
 
   try {
     await uploadAvatar(file);
+
     input.value = '';
+
     notify('Фото профілю успішно збережено.');
+
     await loadNews();
   } catch (error) {
     console.error('Помилка завантаження аватара:', error);
     notify('Не вдалося зберегти фото: ' + error.message);
   }
 }
+
 
 /* ВХІД І РЕЄСТРАЦІЯ */
 
@@ -187,6 +193,7 @@ async function login(event) {
   }
 
   $('auth-section').style.display = 'none';
+
   await renderUserState();
 }
 
@@ -240,6 +247,12 @@ async function register(event) {
   $('reg-email').value = '';
   $('reg-password').value = '';
 
+  const avatarInput = $('reg-avatar');
+
+  if (avatarInput) {
+    avatarInput.value = '';
+  }
+
   closeRegister();
 
   if (data.session) {
@@ -262,8 +275,14 @@ async function logout() {
   currentUser = null;
   currentProfile = null;
 
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+
   location.reload();
 }
+
 
 /* СТАН КОРИСТУВАЧА */
 
@@ -291,7 +310,7 @@ async function renderUserState() {
     main.style.display = 'none';
     admin.style.display = 'none';
 
-    loadCountdown();
+    loadDateCountdown();
     return;
   }
 
@@ -303,6 +322,7 @@ async function renderUserState() {
 
   if (error) {
     console.error(error);
+
     return notify(
       'Помилка завантаження профілю: ' + error.message
     );
@@ -330,6 +350,8 @@ async function renderUserState() {
     pending.style.display = 'none';
     main.style.display = 'none';
     guest.hidden = false;
+
+    loadDateCountdown();
     return;
   }
 
@@ -344,8 +366,11 @@ async function renderUserState() {
     `Вітаємо, ${profile.full_name || 'учаснику'}!`;
 
   showPage('news');
-  loadCountdown();
+
+  // Таймер до найближчої дати з таблиці dates
+  loadDateCountdown();
 }
+
 
 /* НАВІГАЦІЯ */
 
@@ -365,6 +390,7 @@ function showPage(page) {
   if (page === 'dates') loadDates();
   if (page === 'events') loadEvents();
 }
+
 
 /* НОВИНИ */
 
@@ -428,6 +454,7 @@ async function loadNews() {
   }
 }
 
+
 /* ІМЕНА АВТОРІВ І КОМЕНТАРІ */
 
 async function loadComments(newsId) {
@@ -480,6 +507,7 @@ async function loadComments(newsId) {
 
   box.innerHTML = data.map(comment => {
     const profile = profilesById[comment.user_id];
+
     const authorName =
       profile?.full_name?.trim() ||
       (
@@ -559,9 +587,24 @@ async function addComment(event, newsId) {
   await loadComments(newsId);
 }
 
-/* ДАТИ: ДВА НЕЗАЛЕЖНІ ТЕГИ */
+
+/* ДАТИ */
 
 function nextAnnualDate(item) {
+  const day = Number(item.date_day);
+  const month = Number(item.date_month);
+
+  if (
+    !Number.isInteger(day) ||
+    !Number.isInteger(month) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+
   const now = new Date();
 
   const today = new Date(
@@ -570,21 +613,27 @@ function nextAnnualDate(item) {
     now.getDate()
   );
 
-  let next = new Date(
-    now.getFullYear(),
-    Number(item.date_month) - 1,
-    Number(item.date_day)
-  );
+  let year = now.getFullYear();
 
-  if (next < today) {
-    next = new Date(
-      now.getFullYear() + 1,
-      Number(item.date_month) - 1,
-      Number(item.date_day)
-    );
+  // Перевіряємо найближче настання дати.
+  // Для 29 лютого шукаємо наступний рік,
+  // у якому ця дата справді існує.
+  for (let i = 0; i <= 8; i++) {
+    const candidate = new Date(year + i, month - 1, day);
+
+    if (
+      candidate.getMonth() !== month - 1 ||
+      candidate.getDate() !== day
+    ) {
+      continue;
+    }
+
+    if (candidate >= today) {
+      return candidate;
+    }
   }
 
-  return next;
+  return null;
 }
 
 function getDateTypeLabel(type) {
@@ -626,10 +675,12 @@ async function loadDates() {
 
   const dates = (data || [])
     .filter(item => item.date_type !== 'event')
-    .sort(
-      (a, b) =>
-        nextAnnualDate(a) - nextAnnualDate(b)
-    );
+    .map(item => ({
+      ...item,
+      nextDate: nextAnnualDate(item)
+    }))
+    .filter(item => item.nextDate)
+    .sort((a, b) => a.nextDate - b.nextDate);
 
   if (!dates.length) {
     box.innerHTML = '<p>Записів поки немає.</p>';
@@ -691,7 +742,7 @@ async function loadDates() {
 
         <small>
           Найближча дата:
-          ${nextAnnualDate(item).toLocaleDateString('uk-UA')}
+          ${item.nextDate.toLocaleDateString('uk-UA')}
         </small>
       </article>
     `;
@@ -715,6 +766,7 @@ function toggleAllDates() {
   showingAllDates = !showingAllDates;
   loadDates();
 }
+
 
 /* ПОДІЇ */
 
@@ -772,86 +824,142 @@ async function loadEvents() {
   `).join('');
 }
 
-/* ЛІЧИЛЬНИКИ */
 
-async function loadCountdown() {
+/* ТАЙМЕР ДО НАЙБЛИЖЧОЇ ДАТИ З ТАБЛИЦІ dates */
+
+async function loadDateCountdown() {
   const guestBox = $('guest-countdown');
   const memberBox = $('member-countdown');
   const guestTitle = $('guest-event-title');
   const memberTitle = $('member-event-title');
 
+  const countdownBoxes = [
+    guestBox,
+    memberBox
+  ].filter(Boolean);
+
+  const titleBoxes = [
+    guestTitle,
+    memberTitle
+  ].filter(Boolean);
+
+  // Прибираємо попередній таймер,
+  // щоб не запускалося кілька інтервалів одночасно.
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+
+  countdownBoxes.forEach(box => {
+    box.textContent = 'Завантажуємо дати…';
+  });
+
+  titleBoxes.forEach(box => {
+    box.textContent = '';
+  });
+
+  // Завантажуємо саме дати, а не події.
   const { data, error } = await db
-    .from('events')
-    .select('title,event_date')
-    .gte('event_date', new Date().toISOString())
-    .order('event_date', { ascending: true })
-    .limit(1);
+    .from('dates')
+    .select('person_name, date_day, date_month, date_year, is_death, date_type, date_status, description');
 
   if (error) {
-    console.error('Помилка відліку:', error);
+    console.error('Помилка завантаження дат для таймера:', error);
 
-    if (guestBox) {
-      guestBox.textContent = 'Не вдалося завантажити подію.';
-    }
-
-    if (memberBox) {
-      memberBox.textContent = 'Не вдалося завантажити подію.';
-    }
+    countdownBoxes.forEach(box => {
+      box.textContent = 'Не вдалося завантажити дати.';
+    });
 
     return;
   }
 
-  if (!data?.length) {
-    if (guestBox) {
-      guestBox.textContent = 'Найближчих подій поки немає.';
-    }
+  // Знаходимо найближчу дату.
+  const upcomingDates = (data || [])
+    .filter(item => item.date_type !== 'event')
+    .map(item => ({
+      ...item,
+      nextDate: nextAnnualDate(item)
+    }))
+    .filter(item => item.nextDate)
+    .sort((a, b) => a.nextDate - b.nextDate);
 
-    if (memberBox) {
-      memberBox.textContent = 'Найближчих подій поки немає.';
-    }
+  if (!upcomingDates.length) {
+    countdownBoxes.forEach(box => {
+      box.textContent = 'Дат поки немає.';
+    });
 
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-    }
+    titleBoxes.forEach(box => {
+      box.textContent = '';
+    });
 
     return;
   }
 
-  const event = data[0];
-  const target = new Date(event.event_date).getTime();
+  const nearestDate = upcomingDates[0];
 
-  function update() {
-    const distance = target - Date.now();
+  const dateLabel = [
+    String(nearestDate.date_day).padStart(2, '0'),
+    String(nearestDate.date_month).padStart(2, '0')
+  ].join('.');
 
-    if (distance <= 0) {
-      if (guestBox) {
-        guestBox.textContent = 'Подія вже почалася.';
-      }
+  const title = `${nearestDate.person_name} — ${dateLabel}`;
 
-      if (memberBox) {
-        memberBox.textContent = 'Подія вже почалася.';
-      }
+  titleBoxes.forEach(box => {
+    box.textContent = title;
+  });
+
+  // Оновлюємо відлік щосекунди.
+  function updateTimer() {
+    const now = new Date();
+
+    const difference =
+      nearestDate.nextDate.getTime() - now.getTime();
+
+    if (difference <= 0) {
+      countdownBoxes.forEach(box => {
+        box.innerHTML = `
+          <div class="countdown-values">
+            <div>
+              <strong>0</strong>
+              <span>днів</span>
+            </div>
+            <div>
+              <strong>00</strong>
+              <span>годин</span>
+            </div>
+            <div>
+              <strong>00</strong>
+              <span>хвилин</span>
+            </div>
+            <div>
+              <strong>00</strong>
+              <span>секунд</span>
+            </div>
+          </div>
+        `;
+      });
 
       clearInterval(countdownTimer);
       countdownTimer = null;
 
-      loadCountdown();
       return;
     }
 
-    const days = Math.floor(distance / 86400000);
+    const days = Math.floor(difference / 86400000);
+
     const hours = Math.floor(
-      distance % 86400000 / 3600000
-    );
-    const minutes = Math.floor(
-      distance % 3600000 / 60000
-    );
-    const seconds = Math.floor(
-      distance % 60000 / 1000
+      (difference % 86400000) / 3600000
     );
 
-    const html = `
+    const minutes = Math.floor(
+      (difference % 3600000) / 60000
+    );
+
+    const seconds = Math.floor(
+      (difference % 60000) / 1000
+    );
+
+    const timerHTML = `
       <div class="countdown-values">
         <div>
           <strong>${days}</strong>
@@ -875,26 +983,16 @@ async function loadCountdown() {
       </div>
     `;
 
-    if (guestBox) guestBox.innerHTML = html;
-    if (memberBox) memberBox.innerHTML = html;
-
-    if (guestTitle) {
-      guestTitle.textContent = event.title;
-    }
-
-    if (memberTitle) {
-      memberTitle.textContent = event.title;
-    }
+    countdownBoxes.forEach(box => {
+      box.innerHTML = timerHTML;
+    });
   }
 
-  if (countdownTimer) {
-    clearInterval(countdownTimer);
-  }
+  updateTimer();
 
-  update();
-
-  countdownTimer = setInterval(update, 1000);
+  countdownTimer = setInterval(updateTimer, 1000);
 }
+
 
 /* ФОРМАТУВАННЯ ДАТ */
 
@@ -906,6 +1004,7 @@ function formatDate(value) {
     timeStyle: 'short'
   });
 }
+
 
 /* ЗАПУСК */
 
