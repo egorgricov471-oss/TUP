@@ -13,44 +13,87 @@
     <nav class="admin-tabs">
       <button onclick="showTab('users')">Користувачі</button>
       <button onclick="showTab('news')">Новини</button>
-      <button onclick="showTab('dates')">Іменини / смерть</button>
+      <button onclick="showTab('dates')">Дати</button>
       <button onclick="showTab('events')">Події</button>
     </nav>
 
     <section id="users" class="admin-tab">
       <h2>Користувачі</h2>
       <div id="pending-users"></div>
+
       <h3>Схвалені користувачі</h3>
       <div id="approved-users"></div>
     </section>
 
     <section id="news" class="admin-tab" hidden>
       <h2>Новини</h2>
+
       <form id="news-form" onsubmit="addNews(event)">
         <input id="news-title" placeholder="Заголовок" required>
         <textarea id="news-content" placeholder="Текст новини" required></textarea>
         <button type="submit">Додати новину</button>
       </form>
+
       <div id="news-list"></div>
     </section>
 
     <section id="dates" class="admin-tab" hidden>
-      <h2>Іменини / смерть</h2>
+      <h2>Дати</h2>
+
       <form id="date-form" onsubmit="addDate(event)">
-        <input id="person-name" placeholder="Ім’я та прізвище" required>
+        <input
+          id="person-name"
+          placeholder="Ім’я та прізвище"
+          required
+        >
 
         <div class="admin-date-fields">
-          <input id="date-day" type="number" min="1" max="31" placeholder="День" required>
-          <input id="date-month" type="number" min="1" max="12" placeholder="Місяць" required>
-          <input id="date-year" type="number" min="1" max="9999" placeholder="Рік (необов’язково)">
+          <input
+            id="date-day"
+            type="number"
+            min="1"
+            max="31"
+            placeholder="День"
+            required
+          >
+
+          <input
+            id="date-month"
+            type="number"
+            min="1"
+            max="12"
+            placeholder="Місяць"
+            required
+          >
+
+          <input
+            id="date-year"
+            type="number"
+            min="1"
+            max="9999"
+            placeholder="Рік (необов’язково)"
+          >
         </div>
 
+        <label for="date-type">Тип дати</label>
         <select id="date-type" required>
-          <option value="birthday">Іменини / день народження</option>
-          <option value="death">День смерті</option>
+          <option value="birthday">Іменини</option>
+          <option value="death">Смерть</option>
+          <option value="other">Інше</option>
         </select>
 
-        <textarea id="date-description" placeholder="Опис (необов’язково)"></textarea>
+        <label for="date-status">Стан</label>
+        <select id="date-status" required>
+          <option value="none">Без стану</option>
+          <option value="holiday">Свято</option>
+          <option value="grief">Траур</option>
+        </select>
+
+        <textarea
+          id="date-description"
+          placeholder="Опис (необов’язково)"
+        ></textarea>
+
         <button type="submit">Додати дату</button>
       </form>
 
@@ -59,17 +102,31 @@
 
     <section id="events" class="admin-tab" hidden>
       <h2>Події</h2>
+
       <form id="event-form" onsubmit="addEvent(event)">
-        <input id="event-title" placeholder="Назва події" required>
+        <input
+          id="event-title"
+          placeholder="Назва події"
+          required
+        >
 
         <select id="event-type" required>
           <option value="holiday">Свято</option>
-          <option value="grief">Горе</option>
+          <option value="grief">Траур</option>
           <option value="other">Інше</option>
         </select>
 
-        <input id="event-date" type="datetime-local" required>
-        <textarea id="event-description" placeholder="Опис (необов’язково)"></textarea>
+        <input
+          id="event-date"
+          type="datetime-local"
+          required
+        >
+
+        <textarea
+          id="event-description"
+          placeholder="Опис (необов’язково)"
+        ></textarea>
+
         <button type="submit">Додати подію</button>
       </form>
 
