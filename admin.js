@@ -35,7 +35,10 @@ function showTab(tabName) {
 }
 
 async function checkAdmin() {
-  const { data: { user }, error: authError } = await db.auth.getUser();
+  const {
+    data: { user },
+    error: authError
+  } = await db.auth.getUser();
 
   if (authError || !user) {
     location.href = 'index.html';
@@ -58,7 +61,12 @@ async function checkAdmin() {
 }
 
 async function logout() {
-  await db.auth.signOut();
+  const { error } = await db.auth.signOut();
+
+  if (error) {
+    return showMessage('Помилка виходу: ' + error.message);
+  }
+
   location.href = 'index.html';
 }
 
@@ -81,19 +89,28 @@ async function loadUsers() {
   }
 
   const pending = data.filter(user => user.status === 'pending');
+
   const approved = data.filter(user =>
     user.status === 'approved' || user.status === 'admin'
   );
 
-  pendingBox.innerHTML = '<h3>Очікують схвалення</h3>' +
-    (pending.length
-      ? pending.map(user => `
-        <div class="admin-item">
-          <strong>${escapeHTML(user.full_name || user.email || user.id)}</strong>
-          <button onclick="approveUser('${user.id}')">Схвалити</button>
-        </div>
-      `).join('')
-      : '<p>Немає користувачів</p>');
+  pendingBox.innerHTML =
+    '<h3>Очікують схвалення</h3>' +
+    (
+      pending.length
+        ? pending.map(user => `
+            <div class="admin-item">
+              <strong>
+                ${escapeHTML(user.full_name || user.email || user.id)}
+              </strong>
+
+              <button onclick="approveUser('${user.id}')">
+                Схвалити
+              </button>
+            </div>
+          `).join('')
+        : '<p>Немає користувачів</p>'
+    );
 
   approvedBox.innerHTML = approved.map(user => `
     <div class="admin-item">
@@ -104,14 +121,20 @@ async function loadUsers() {
 }
 
 async function approveUser(id) {
-  const greeting = prompt('Привітання для користувача (необов’язково):') || '';
+  const greeting =
+    prompt('Привітання для користувача (необов’язково):') || '';
 
   const { error } = await db
     .from('profiles')
-    .update({ status: 'approved', greeting })
+    .update({
+      status: 'approved',
+      greeting
+    })
     .eq('id', id);
 
-  if (error) return showMessage('Помилка: ' + error.message);
+  if (error) {
+    return showMessage('Помилка: ' + error.message);
+  }
 
   showMessage('Користувача схвалено');
   loadUsers();
@@ -121,6 +144,7 @@ async function approveUser(id) {
 
 async function loadNews() {
   const box = document.getElementById('news-list');
+
   if (!box) return;
 
   const { data, error } = await db
@@ -137,7 +161,10 @@ async function loadNews() {
     <div class="admin-item">
       <strong>${escapeHTML(item.title)}</strong>
       <p>${escapeHTML(item.content)}</p>
-      <button onclick="deleteNews('${item.id}')">Видалити</button>
+
+      <button onclick="deleteNews('${item.id}')">
+        Видалити
+      </button>
     </div>
   `).join('');
 }
@@ -154,9 +181,12 @@ async function addNews(event) {
     .from('news')
     .insert([{ title, content }]);
 
-  if (error) return showMessage('Помилка: ' + error.message);
+  if (error) {
+    return showMessage('Помилка: ' + error.message);
+  }
 
   document.getElementById('news-form').reset();
+
   showMessage('Новину додано');
   loadNews();
 }
@@ -164,17 +194,61 @@ async function addNews(event) {
 async function deleteNews(id) {
   if (!confirm('Видалити цю новину?')) return;
 
-  const { error } = await db.from('news').delete().eq('id', id);
+  const { error } = await db
+    .from('news')
+    .delete()
+    .eq('id', id);
 
-  if (error) return showMessage('Помилка: ' + error.message);
+  if (error) {
+    return showMessage('Помилка: ' + error.message);
+  }
 
   loadNews();
 }
 
-/* ІМЕНИНИ / СМЕРТЬ */
+/* ДАТИ: НЕЗАЛЕЖНІ ТИП І СТАН */
+
+function nextOccurrence(item) {
+  const now = new Date();
+
+  const day = Number(item.date_day);
+  const month = Number(item.date_month) - 1;
+
+  let date = new Date(now.getFullYear(), month, day);
+
+  if (
+    date <
+    new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  ) {
+    date = new Date(now.getFullYear() + 1, month, day);
+  }
+
+  return date.getTime();
+}
+
+function dateTypeLabel(type) {
+  const labels = {
+    birthday: 'Іменини',
+    death: 'Смерть',
+    other: 'Інше'
+  };
+
+  return labels[type] || 'Інше';
+}
+
+function dateStatusLabel(status) {
+  const labels = {
+    none: 'Без стану',
+    holiday: 'Свято',
+    grief: 'Траур'
+  };
+
+  return labels[status] || 'Без стану';
+}
 
 async function loadDates() {
   const box = document.getElementById('dates-list');
+
   if (!box) return;
 
   const { data, error } = await db
@@ -190,10 +264,16 @@ async function loadDates() {
     return nextOccurrence(a) - nextOccurrence(b);
   });
 
+  if (!sorted.length) {
+    box.innerHTML = '<p>Дат поки немає.</p>';
+    return;
+  }
+
   box.innerHTML = sorted.map(item => {
-    const type = item.date_type === 'death' || item.is_death
-      ? 'День смерті'
-      : 'Іменини / день народження';
+    const type = item.date_type ||
+      (item.is_death ? 'death' : 'birthday');
+
+    const status = item.date_status || 'none';
 
     const date = [
       String(item.date_day).padStart(2, '0'),
@@ -204,60 +284,88 @@ async function loadDates() {
     return `
       <div class="admin-item">
         <strong>${escapeHTML(item.person_name)}</strong>
-        <span>${escapeHTML(type)}</span>
+
+        <div class="date-tags">
+          <span class="date-type date-type-${escapeHTML(type)}">
+            ${dateTypeLabel(type)}
+          </span>
+
+          <span class="date-status date-status-${escapeHTML(status)}">
+            ${dateStatusLabel(status)}
+          </span>
+        </div>
+
         <p>${escapeHTML(date)}</p>
+
         <p>${escapeHTML(item.description || '')}</p>
-        <button onclick="deleteDate('${item.id}')">Видалити</button>
+
+        <button onclick="deleteDate('${item.id}')">
+          Видалити
+        </button>
       </div>
     `;
   }).join('');
 }
 
-function nextOccurrence(item) {
-  const now = new Date();
-  const day = Number(item.date_day);
-  const month = Number(item.date_month) - 1;
-
-  let date = new Date(now.getFullYear(), month, day);
-
-  if (date < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
-    date = new Date(now.getFullYear() + 1, month, day);
-  }
-
-  return date.getTime();
-}
-
 async function addDate(event) {
   event.preventDefault();
 
-  const person_name = document.getElementById('person-name').value.trim();
-  const date_day = Number(document.getElementById('date-day').value);
-  const date_month = Number(document.getElementById('date-month').value);
-  const yearValue = document.getElementById('date-year').value;
+  const person_name =
+    document.getElementById('person-name').value.trim();
+
+  const date_day =
+    Number(document.getElementById('date-day').value);
+
+  const date_month =
+    Number(document.getElementById('date-month').value);
+
+  const yearValue =
+    document.getElementById('date-year').value;
+
   const date_year = yearValue ? Number(yearValue) : null;
-  const date_type = document.getElementById('date-type').value;
-  const description = document.getElementById('date-description').value.trim();
+
+  // Перший незалежний тег
+  const date_type =
+    document.getElementById('date-type').value;
+
+  // Другий незалежний тег
+  const date_status =
+    document.getElementById('date-status').value;
+
+  const description =
+    document.getElementById('date-description').value.trim();
 
   const daysInMonth = new Date(2000, date_month, 0).getDate();
 
-  if (!person_name || date_day < 1 || date_day > daysInMonth ||
-      date_month < 1 || date_month > 12) {
+  if (
+    !person_name ||
+    date_day < 1 ||
+    date_day > daysInMonth ||
+    date_month < 1 ||
+    date_month > 12
+  ) {
     return showMessage('Перевір правильність дати');
   }
 
-  const { error } = await db.from('dates').insert([{
-    person_name,
-    date_day,
-    date_month,
-    date_year,
-    date_type,
-    is_death: date_type === 'death',
-    description
-  }]);
+  const { error } = await db
+    .from('dates')
+    .insert([{
+      person_name,
+      date_day,
+      date_month,
+      date_year,
+      date_type,
+      date_status,
+      is_death: date_type === 'death',
+      description
+    }]);
 
-  if (error) return showMessage('Помилка: ' + error.message);
+  if (error) {
+    return showMessage('Помилка: ' + error.message);
+  }
 
   document.getElementById('date-form').reset();
+
   showMessage('Дату додано');
   loadDates();
 }
@@ -265,9 +373,14 @@ async function addDate(event) {
 async function deleteDate(id) {
   if (!confirm('Видалити цей запис?')) return;
 
-  const { error } = await db.from('dates').delete().eq('id', id);
+  const { error } = await db
+    .from('dates')
+    .delete()
+    .eq('id', id);
 
-  if (error) return showMessage('Помилка: ' + error.message);
+  if (error) {
+    return showMessage('Помилка: ' + error.message);
+  }
 
   loadDates();
 }
@@ -276,6 +389,7 @@ async function deleteDate(id) {
 
 async function loadEvents() {
   const box = document.getElementById('events-list');
+
   if (!box) return;
 
   const { data, error } = await db
@@ -290,17 +404,29 @@ async function loadEvents() {
 
   const labels = {
     holiday: 'Свято',
-    grief: 'Горе',
+    grief: 'Траур',
     other: 'Інше'
   };
 
   box.innerHTML = (data || []).map(item => `
     <div class="admin-item">
       <strong>${escapeHTML(item.title)}</strong>
-      <span>${escapeHTML(labels[item.event_type] || 'Інше')}</span>
-      <p>${escapeHTML(new Date(item.event_date).toLocaleString('uk-UA'))}</p>
+
+      <span>
+        ${labels[item.event_type] || 'Інше'}
+      </span>
+
+      <p>
+        ${escapeHTML(
+          new Date(item.event_date).toLocaleString('uk-UA')
+        )}
+      </p>
+
       <p>${escapeHTML(item.description || '')}</p>
-      <button onclick="deleteEvent('${item.id}')">Видалити</button>
+
+      <button onclick="deleteEvent('${item.id}')">
+        Видалити
+      </button>
     </div>
   `).join('');
 }
@@ -308,25 +434,37 @@ async function loadEvents() {
 async function addEvent(event) {
   event.preventDefault();
 
-  const title = document.getElementById('event-title').value.trim();
-  const event_type = document.getElementById('event-type').value;
-  const date = document.getElementById('event-date').value;
-  const description = document.getElementById('event-description').value.trim();
+  const title =
+    document.getElementById('event-title').value.trim();
+
+  const event_type =
+    document.getElementById('event-type').value;
+
+  const date =
+    document.getElementById('event-date').value;
+
+  const description =
+    document.getElementById('event-description').value.trim();
 
   if (!title || !date) {
     return showMessage('Заповни назву та дату події');
   }
 
-  const { error } = await db.from('events').insert([{
-    title,
-    event_type,
-    event_date: new Date(date).toISOString(),
-    description
-  }]);
+  const { error } = await db
+    .from('events')
+    .insert([{
+      title,
+      event_type,
+      event_date: new Date(date).toISOString(),
+      description
+    }]);
 
-  if (error) return showMessage('Помилка: ' + error.message);
+  if (error) {
+    return showMessage('Помилка: ' + error.message);
+  }
 
   document.getElementById('event-form').reset();
+
   showMessage('Подію додано');
   loadEvents();
 }
@@ -334,11 +472,18 @@ async function addEvent(event) {
 async function deleteEvent(id) {
   if (!confirm('Видалити цю подію?')) return;
 
-  const { error } = await db.from('events').delete().eq('id', id);
+  const { error } = await db
+    .from('events')
+    .delete()
+    .eq('id', id);
 
-  if (error) return showMessage('Помилка: ' + error.message);
+  if (error) {
+    return showMessage('Помилка: ' + error.message);
+  }
 
   loadEvents();
 }
+
+/* ЗАПУСК */
 
 checkAdmin();
